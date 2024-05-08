@@ -83,6 +83,20 @@ const _knownOpenAIChatModels: ManualMappings = [
 
   // GPT4 Vision Previews
   {
+    idPrefix: 'gpt-4v', // GPT-4 Turbo vision preview
+    label: 'GPT-4 Preview Vision',
+    description: 'GPT-4 model with the ability to understand images, in addition to all other GPT-4 Turbo capabilities. This is a preview model, we recommend developers to now use gpt-4-turbo which includes vision capabilities. Currently points to gpt-4-1106-vision-preview.',
+    symLink: 'gpt-4-1106-vision-preview',
+    // copied from symlinked
+    isPreview: true,
+    contextWindow: 128000,
+    maxCompletionTokens: 4096,
+    trainingDataCutoff: 'Apr 2023',
+    interfaces: [LLM_IF_OAI_Chat, LLM_IF_OAI_Vision, LLM_IF_OAI_Fn],
+    pricing: { chatIn: 10, chatOut: 30 },
+    hidden: true, // Deprecated in favor of gpt-4-turbo
+  },
+  {
     idPrefix: 'gpt-4-vision-preview', // GPT-4 Turbo vision preview
     label: 'GPT-4 Preview Vision',
     description: 'GPT-4 model with the ability to understand images, in addition to all other GPT-4 Turbo capabilities. This is a preview model, we recommend developers to now use gpt-4-turbo which includes vision capabilities. Currently points to gpt-4-1106-vision-preview.',
@@ -146,6 +160,33 @@ const _knownOpenAIChatModels: ManualMappings = [
 
 
   // GPT4's
+  {
+    isLatest: true,
+    idPrefix: 'gpt-4-0125', // GPT-4 Turbo preview model
+    label: 'GPT-4 Turbo (0125)',
+    description: 'GPT-4 Turbo preview model featuring improved instruction following, JSON mode, reproducible outputs, parallel function calling, and more. Returns a maximum of 4,096 output tokens.',
+    isPreview: true,
+    contextWindow: 128000,
+    maxCompletionTokens: 4096,
+    trainingDataCutoff: 'Dec 2023',
+    interfaces: [LLM_IF_OAI_Chat, LLM_IF_OAI_Fn],
+    pricing: { chatIn: 10, chatOut: 30 },
+    benchmark: { cbaElo: 1251 },
+    hidden: true,
+  },
+  {
+    idPrefix: 'gpt-4-1106', // GPT-4 Turbo preview model
+    label: 'GPT-4 Turbo (1106)',
+    description: 'GPT-4 Turbo preview model featuring improved instruction following, JSON mode, reproducible outputs, parallel function calling, and more. Returns a maximum of 4,096 output tokens.',
+    isPreview: true,
+    contextWindow: 128000,
+    maxCompletionTokens: 4096,
+    trainingDataCutoff: 'Apr 2023',
+    interfaces: [LLM_IF_OAI_Chat, LLM_IF_OAI_Fn],
+    pricing: { chatIn: 10, chatOut: 30 },
+    benchmark: { cbaElo: 1255 },
+    hidden: true,
+  },
   {
     idPrefix: 'gpt-4-0613',
     label: 'GPT-4 (0613)',

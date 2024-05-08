@@ -38,7 +38,7 @@ export const ModelVendorAzure: IModelVendor<SourceSetupAzure, OpenAIAccessSchema
   name: 'Azure',
   rank: 14,
   location: 'cloud',
-  instanceLimit: 2,
+  instanceLimit: 20,
   hasBackendCapKey: 'hasLlmAzureOpenAI',
 
   // components
