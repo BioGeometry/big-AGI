@@ -190,6 +190,30 @@ const _knownOpenAIChatModels: ManualMappings = [
   // GPT4's
   {
     isLatest: true,
+    idPrefix: 'gpt-4o-0513',
+    label: 'GPT-4o (2024-05-13)',
+    description: 'Advanced, multimodal flagship model that’s cheaper and faster than GPT-4 Turbo.',
+    contextWindow: 128000,
+    maxCompletionTokens: 4096,
+    trainingDataCutoff: 'Oct 2023',
+    interfaces: [LLM_IF_OAI_Chat, LLM_IF_OAI_Vision, LLM_IF_OAI_Fn, LLM_IF_OAI_Json],
+    pricing: { chatIn: 5, chatOut: 15 },
+    benchmark: { cbaElo: 1310 },
+  },
+  {
+    idPrefix: 'gpt-4-0409', // GPT-4 Turbo preview model
+    label: 'GPT-4 Turbo (0409)',
+    description: 'New GPT-4 Turbo with Vision. The latest GPT-4 Turbo model with vision capabilities. Vision requests can now use JSON mode and function calling. Currently points to gpt-4-turbo-2024-04-09.',
+    isPreview: true,
+    contextWindow: 128000,
+    maxCompletionTokens: 4096,
+    trainingDataCutoff: 'Dec 2023',
+    interfaces: [LLM_IF_OAI_Chat, LLM_IF_OAI_Vision, LLM_IF_OAI_Fn, LLM_IF_OAI_Json],
+    pricing: { chatIn: 10, chatOut: 30 },
+    benchmark: { cbaElo: 1261 },
+    hidden: true,
+  },
+  {
     idPrefix: 'gpt-4-0125', // GPT-4 Turbo preview model
     label: 'GPT-4 Turbo (0125)',
     description: 'GPT-4 Turbo preview model featuring improved instruction following, JSON mode, reproducible outputs, parallel function calling, and more. Returns a maximum of 4,096 output tokens.',
@@ -197,7 +221,7 @@ const _knownOpenAIChatModels: ManualMappings = [
     contextWindow: 128000,
     maxCompletionTokens: 4096,
     trainingDataCutoff: 'Dec 2023',
-    interfaces: [LLM_IF_OAI_Chat, LLM_IF_OAI_Fn],
+    interfaces: [LLM_IF_OAI_Chat, LLM_IF_OAI_Fn, LLM_IF_OAI_Json],
     pricing: { chatIn: 10, chatOut: 30 },
     benchmark: { cbaElo: 1251 },
     hidden: true,
@@ -358,6 +382,7 @@ export function openAIModelToModelDescription(modelId: string, modelCreated: num
 export function azureModelToModelDescription(azureDeploymentRef: string, openAIModelIdBase: string, modelCreated: number, modelUpdated?: number): ModelDescriptionSchema {
   // if the deployment name mataches an OpenAI model prefix, use that
   const known = _knownOpenAIChatModels.find(base => azureDeploymentRef == base.idPrefix);
+  console.log(azureDeploymentRef, openAIModelIdBase, known);
   return fromManualMapping(_knownOpenAIChatModels, known ? azureDeploymentRef : openAIModelIdBase, modelCreated, modelUpdated);
 }
 
