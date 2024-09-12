@@ -231,6 +231,17 @@ const _knownOpenAIChatModels: ManualMappings = [
   // GPT4's
   {
     isLatest: true,
+    idPrefix: 'gpt-4o-0806',
+    label: 'GPT-4o (2024-08-06)',
+    description: 'Latest snapshot that supports Structured Outputs',
+    contextWindow: 128000,
+    maxCompletionTokens: 16384,
+    trainingDataCutoff: 'Oct 2023',
+    interfaces: [LLM_IF_OAI_Chat, LLM_IF_OAI_Vision, LLM_IF_OAI_Fn, LLM_IF_OAI_Json],
+    chatPrice: { input: 2.5, output: 10 },
+    benchmark: { cbaElo: 1286 + 1 },
+  },
+  {
     idPrefix: 'gpt-4o-0513',
     label: 'GPT-4o (2024-05-13)',
     description: 'Advanced, multimodal flagship model that’s cheaper and faster than GPT-4 Turbo.',
@@ -239,7 +250,7 @@ const _knownOpenAIChatModels: ManualMappings = [
     trainingDataCutoff: 'Oct 2023',
     interfaces: [LLM_IF_OAI_Chat, LLM_IF_OAI_Vision, LLM_IF_OAI_Fn, LLM_IF_OAI_Json],
     chatPrice: { input: 5, output: 15 },
-    benchmark: { cbaElo: 1310 },
+    benchmark: { cbaElo: 1286 },
   },
   {
     idPrefix: 'gpt-4-0409', // GPT-4 Turbo preview model
