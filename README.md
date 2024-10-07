@@ -11,18 +11,19 @@ Stay ahead of the curve with big-AGI. 🚀 Pros & Devs love big-AGI. 🤖
 
 [![Official Website](https://img.shields.io/badge/BIG--AGI.com-%23096bde?style=for-the-badge&logo=vercel&label=launch)](https://big-agi.com)
 
+> 🚀 Big-AGI 2 is launching Q4 2024. Be the first to experience it before the public release.
+>
+> 👉 [Apply for Early Access](https://y2rjg0zillz.typeform.com/to/FDggwwZv?utm_source=github&utm_medium=readme&utm_campaign=ba20)
+
 Or fork & run on Vercel
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fenricoros%2Fbig-AGI&env=OPENAI_API_KEY&envDescription=Backend%20API%20keys%2C%20optional%20and%20may%20be%20overridden%20by%20the%20UI.&envLink=https%3A%2F%2Fgithub.com%2Fenricoros%2Fbig-AGI%2Fblob%2Fmain%2Fdocs%2Fenvironment-variables.md&project-name=big-AGI)
 
-## 👉 [roadmap](https://github.com/users/enricoros/projects/4/views/2) 👉 [installation](docs/installation.md) 👉 [documentation](docs/README.md)
+### Quick links: 👉 [roadmap](https://github.com/users/enricoros/projects/4/views/2) 👉 [installation](docs/installation.md) 👉 [documentation](docs/README.md)
 
-> Note: bigger better features (incl. Beam-2) are being cooked outside of `main`.
+### What's New in 1.16.1...1.16.8 · Sep 13, 2024 (patch releases)
 
-[//]: # (big-AGI is an open book; see the **[ready-to-ship and future ideas]&#40;https://github.com/users/enricoros/projects/4/views/2&#41;** in our open roadmap)
-
-### What's New in 1.16.1...1.16.7 · Aug 7, 2024 (patch releases)
-
+- 1.16.8: OpenAI ChatGPT-4o Latest (o1-preview and o1-mini are supported in Big-AGI 2)
 - 1.16.7: OpenAI support for GPT-4o 2024-08-06
 - 1.16.6: Groq support for Llama 3.1 models
 - 1.16.5: GPT-4o Mini support
@@ -218,6 +219,13 @@ Or bring your API keys and jump straight into our free instance on [big-AGI.com]
 [//]: # ([![GitHub pull requests]&#40;https://img.shields.io/github/issues-pr/enricoros/big-agi&#41;]&#40;https://github.com/enricoros/big-agi/pulls&#41;)
 
 [//]: # ([![License]&#40;https://img.shields.io/github/license/enricoros/big-agi&#41;]&#40;https://github.com/enricoros/big-agi/LICENSE&#41;)
+
+## 📜 Licensing
+
+Big-AGI incorporates third-party software components that are subject
+to separate license terms. For detailed information about these
+components and their respective licenses, please refer to
+the [Third-Party Notices](src/modules/3rdparty/THIRD_PARTY_NOTICES.md).
 
 ---
 

@@ -384,7 +384,17 @@ export namespace AixWire_API {
 
   export const ContextChatGenerateStream_schema = z.object({
     method: z.literal('chat-stream'),
-    name: z.enum(['DEV', 'conversation', 'ai-diagram', 'ai-flattener', 'call', 'beam-scatter', 'beam-gather', 'persona-extract']),
+    name: z.enum([
+      'DEV',
+      'conversation',       // chatting with a persona - conversationId
+      'ai-diagram',         // making a diagram - messageId
+      'ai-flattener',       // flattening a thread - messageId of the first message
+      'aifn-gen-cr-diffs',  // generating change request diffs - messageId of the change request
+      'beam-gather',        // fusing beam rays - fusionId
+      'beam-scatter',       // scattering beam rays - rayId
+      'call',               // having a phone conversation - messageId of the first message
+      'persona-extract',    // extracting a persona from texts - chainId
+    ]),
     ref: z.string(),
   });
 
@@ -498,18 +508,20 @@ export namespace AixWire_Particles {
    */
   export type CGSelectMetrics = {
     // T = milliseconds
-    TIn?: number,
+    TIn?: number,         // Portion of Input tokens which is new (not cached)
     TCacheRead?: number,
     TCacheWrite?: number,
     TOut?: number,
-
-    // v = Tokens/s
-    vTOutInner?: number,  // TOut / dtInner
+    TOutR?: number,       // Portion of TOut that was used for reasoning (e.g. not for output)
+    // TOutA?: number,    // Portion of TOut that was used for Audio
 
     // dt = milliseconds
     dtStart?: number,
     dtInner?: number,
     dtAll?: number,
+
+    // v = Tokens/s
+    vTOutInner?: number,  // TOut / dtInner
   };
 
   // TextParticle / PartParticle - keep in line with the DMessage*Part counterparts

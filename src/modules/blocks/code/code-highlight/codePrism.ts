@@ -36,6 +36,7 @@ export function inferCodeLanguage(blockTitle: string, code: string): string | nu
 
   // if we have a block title, use it to infer the language
   if (blockTitle) {
+
     // single word: assume it's the syntax highlight language
     if (!blockTitle.includes('.'))
       return hFileExtensionsMap.hasOwnProperty(blockTitle) ? hFileExtensionsMap[blockTitle] : blockTitle;
