@@ -40,7 +40,7 @@ export function aixToOpenAIChatCompletions(openAIDialect: OpenAIDialects, model:
   // [OpenAI] - o1 models
   // - o1 models don't support system messages, we could hotfix this here once and for all, but we want to transfer the responsibility to the UI for better messaging to the user
   // - o1 models also use the new 'max_completion_tokens' rather than 'max_tokens', breaking API compatibility, so we have to address it here
-  const hotFixOpenAIO1Preview = openAIDialect === 'openai' && model.id.startsWith('o1-'); // OpenAI o1 models don't support system messages
+  const hotFixOpenAIO1Preview = model.id.startsWith('o1-'); // OpenAI o1 models don't support system messages
 
   // Throw if function support is needed but missing
   if (chatGenerate.tools?.length && hotFixThrowCannotFC)
