@@ -88,6 +88,7 @@ export const llmOpenAIRouter = createTRPCRouter({
       // [Azure]: use an older 'deployments' API to enumerate the models, and a modified OpenAI id to description mapping
       if (access.dialect === 'azure') {
         const azureModels = await openaiGETOrThrow(access, `/openai/deployments?api-version=2023-03-15-preview`);
+        console.log(azureModels);
 
         const wireAzureListDeploymentsSchema = z.object({
           data: z.array(z.object({
@@ -105,7 +106,7 @@ export const llmOpenAIRouter = createTRPCRouter({
 
         // only take 'gpt' models
         models = azureWireModels
-          .filter(m => m.model.includes('gpt'))
+          .filter(m => m.model.includes('gpt') || m.model.includes('o1'))
           .map((model): ModelDescriptionSchema => {
             const { id: deploymentRef, model: openAIModelId } = model;
             const { id: _deleted, label, ...rest } = azureModelToModelDescription(deploymentRef, openAIModelId, model.created_at, model.updated_at);

@@ -369,6 +369,94 @@ export const _knownOpenAIChatModels: ManualMappings = [
   },
 
   // Azure variants - because someone forgot the dot
+  // {
+  //   idPrefix: 'o1-preview-0912',
+  //   label: 'o1 Preview (2024-09-12) ⏱️',
+  //   description: 'This model takes longer to run and does not support streaming.\n\nNew reasoning model for complex tasks that require broad general knowledge.',
+  //   contextWindow: 128000,
+  //   maxCompletionTokens: 32768,
+  //   trainingDataCutoff: 'Oct 2023',
+  //   interfaces: [LLM_IF_OAI_Chat, LLM_IF_SPECIAL_OAI_O1Preview, LLM_IF_OAI_PromptCaching],
+  //   chatPrice: { input: 15, cache: { cType: 'oai-ac', read: 7.50 }, output: 60 },
+  //   benchmark: { cbaElo: 1339 },
+  //   isPreview: true,
+  // },
+  {
+    idPrefix: 'gpt-4v', // GPT-4 Turbo vision preview
+    label: 'GPT-4 Preview Vision',
+    description: 'GPT-4 model with the ability to understand images, in addition to all other GPT-4 Turbo capabilities. This is a preview model, we recommend developers to now use gpt-4-turbo which includes vision capabilities. Currently points to gpt-4-1106-vision-preview.',
+    symLink: 'gpt-4-1106-vision-preview',
+    // copied from symlinked
+    isPreview: true,
+    contextWindow: 128000,
+    maxCompletionTokens: 4096,
+    trainingDataCutoff: 'Apr 2023',
+    interfaces: [LLM_IF_OAI_Chat, LLM_IF_OAI_Vision, LLM_IF_OAI_Fn],
+    chatPrice: { input: 10, output: 30 },
+    hidden: true, // Deprecated in favor of gpt-4-turbo
+  },
+  {
+    isLatest: true,
+    idPrefix: 'gpt-4o-0806',
+    label: 'GPT-4o (2024-08-06)',
+    description: 'Latest snapshot that supports Structured Outputs',
+    contextWindow: 128000,
+    maxCompletionTokens: 16384,
+    trainingDataCutoff: 'Oct 2023',
+    interfaces: [LLM_IF_OAI_Chat, LLM_IF_OAI_Vision, LLM_IF_OAI_Fn, LLM_IF_OAI_Json],
+    chatPrice: { input: 2.5, output: 10 },
+    benchmark: { cbaElo: 1286 + 1 },
+  },
+  {
+    idPrefix: 'gpt-4o-0513',
+    label: 'GPT-4o (2024-05-13)',
+    description: 'Advanced, multimodal flagship model that’s cheaper and faster than GPT-4 Turbo.',
+    contextWindow: 128000,
+    maxCompletionTokens: 4096,
+    trainingDataCutoff: 'Oct 2023',
+    interfaces: [LLM_IF_OAI_Chat, LLM_IF_OAI_Vision, LLM_IF_OAI_Fn, LLM_IF_OAI_Json],
+    chatPrice: { input: 5, output: 15 },
+    benchmark: { cbaElo: 1286 },
+  },
+  {
+    idPrefix: 'gpt-4-0409', // GPT-4 Turbo preview model
+    label: 'GPT-4 Turbo (0409)',
+    description: 'New GPT-4 Turbo with Vision. The latest GPT-4 Turbo model with vision capabilities. Vision requests can now use JSON mode and function calling. Currently points to gpt-4-turbo-2024-04-09.',
+    isPreview: true,
+    contextWindow: 128000,
+    maxCompletionTokens: 4096,
+    trainingDataCutoff: 'Dec 2023',
+    interfaces: [LLM_IF_OAI_Chat, LLM_IF_OAI_Vision, LLM_IF_OAI_Fn, LLM_IF_OAI_Json],
+    chatPrice: { input: 10, output: 30 },
+    benchmark: { cbaElo: 1261 },
+    hidden: true,
+  },
+  {
+    idPrefix: 'gpt-4-0125', // GPT-4 Turbo preview model
+    label: 'GPT-4 Turbo (0125)',
+    description: 'GPT-4 Turbo preview model featuring improved instruction following, JSON mode, reproducible outputs, parallel function calling, and more. Returns a maximum of 4,096 output tokens.',
+    isPreview: true,
+    contextWindow: 128000,
+    maxCompletionTokens: 4096,
+    trainingDataCutoff: 'Dec 2023',
+    interfaces: [LLM_IF_OAI_Chat, LLM_IF_OAI_Fn, LLM_IF_OAI_Json],
+    chatPrice: { input: 10, output: 30 },
+    benchmark: { cbaElo: 1251 },
+    hidden: true,
+  },
+  {
+    idPrefix: 'gpt-4-1106', // GPT-4 Turbo preview model
+    label: 'GPT-4 Turbo (1106)',
+    description: 'GPT-4 Turbo preview model featuring improved instruction following, JSON mode, reproducible outputs, parallel function calling, and more. Returns a maximum of 4,096 output tokens.',
+    isPreview: true,
+    contextWindow: 128000,
+    maxCompletionTokens: 4096,
+    trainingDataCutoff: 'Apr 2023',
+    interfaces: [LLM_IF_OAI_Chat, LLM_IF_OAI_Fn],
+    chatPrice: { input: 10, output: 30 },
+    benchmark: { cbaElo: 1255 },
+    hidden: true,
+  },
   {
     idPrefix: 'gpt-35-turbo-16k',
     label: '3.5-Turbo 16k',
@@ -427,5 +515,7 @@ export function openAIModelFilter(model: OpenAIWire_API_Models_List.Model) {
 }
 
 export function openAIModelToModelDescription(modelId: string, modelCreated: number | undefined, modelUpdated?: number): ModelDescriptionSchema {
-  return fromManualMapping(_knownOpenAIChatModels, modelId, modelCreated, modelUpdated);
+  const ret = fromManualMapping(_knownOpenAIChatModels, modelId, modelCreated, modelUpdated);
+  console.log('modelDescription -->', ret, modelId);
+  return ret;
 }
