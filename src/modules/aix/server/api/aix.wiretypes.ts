@@ -135,6 +135,9 @@ export namespace AixWire_Parts {
     // optional title of the document
     l1Title: z.string().optional(),
 
+    // version of the document - optional because it's not guaranteed, but strongly suggested
+    version: z.number().optional(),
+
     // inlined for now as it's only used here; in the TypeScript definition this is DMessageDataInline
     data: z.object({
       idt: z.literal('text'),
@@ -150,7 +153,7 @@ export namespace AixWire_Parts {
   const _FunctionCallInvocation_schema = z.object({
     type: z.literal('function_call'),
     name: z.string(),
-    args: z.string().nullable(),
+    args: z.string(), //.nullable(), // 2024-11-03: disabled .nullable(), as we'll use '' for no args (which some APIs weirdly don't support so we'll mock downstream as '{}')
     // _description: z.string().optional(),
     // _args_schema: z.object({}).optional(),
   });
@@ -266,7 +269,7 @@ export namespace AixWire_Content {
 
 export namespace AixWire_Tooling {
 
-  /// Function Call Tool
+  /// Function Call Tool Definition
 
   const _FunctionCall_schema = z.object({
     /**
@@ -283,6 +286,7 @@ export namespace AixWire_Tooling {
     description: z.string(),
     /**
      *  A JSON Schema object defining the expected parameters for the function call.
+     *  - Optional. If not provided, it means the Function Tool does not require any input and will be invoked without any arguments.
      *  (OpenAI + Google: parameters, Anthropic: input_schema)
      */
     input_schema: z.object({

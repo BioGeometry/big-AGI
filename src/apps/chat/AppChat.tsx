@@ -21,8 +21,10 @@ import { ConversationsManager } from '~/common/chat-overlay/ConversationsManager
 import { LLM_IF_ANT_PromptCaching, LLM_IF_OAI_Vision } from '~/common/stores/llms/llms.types';
 import { OptimaDrawerIn, OptimaToolbarIn } from '~/common/layout/optima/portals/OptimaPortalsIn';
 import { PanelResizeInset } from '~/common/components/panes/GoodPanelResizeHandler';
+import { Release } from '~/common/app.release';
 import { ScrollToBottom } from '~/common/scroll-to-bottom/ScrollToBottom';
 import { ScrollToBottomButton } from '~/common/scroll-to-bottom/ScrollToBottomButton';
+import { ShortcutKey, useGlobalShortcuts } from '~/common/components/shortcuts/useGlobalShortcuts';
 import { WorkspaceIdProvider } from '~/common/stores/workspace/WorkspaceIdProvider';
 import { addSnackbar, removeSnackbar } from '~/common/components/snackbar/useSnackbarsStore';
 import { createDMessageFromFragments, createDMessagePlaceholderIncomplete, DMessageMetadata, duplicateDMessageMetadata } from '~/common/stores/chat/chat.message';
@@ -34,7 +36,6 @@ import { optimaActions, optimaOpenModels, optimaOpenPreferences, useSetOptimaApp
 import { themeBgAppChatComposer } from '~/common/app.theme';
 import { useChatLLM } from '~/common/stores/llms/llms.hooks';
 import { useFolderStore } from '~/common/stores/folders/store-chat-folders';
-import { useGlobalShortcuts } from '~/common/components/shortcuts/useGlobalShortcuts';
 import { useIsMobile, useIsTallScreen } from '~/common/components/useMatchMedia';
 import { useOverlayComponents } from '~/common/layout/overlays/useOverlayComponents';
 import { useRouterQuery } from '~/common/app.routes';
@@ -201,8 +202,10 @@ export function AppChat() {
 
   // [effect] Handle the initial conversation intent
   React.useEffect(() => {
-    intent.initialConversationId && handleOpenConversationInFocusedPane(intent.initialConversationId);
-  }, [handleOpenConversationInFocusedPane, intent.initialConversationId]);
+    if (Release.IsNodeDevBuild && intent.initialConversationId === 'null')
+      return openConversationInFocusedPane(null! /* for debugging purporse */);
+    intent.initialConversationId && openConversationInFocusedPane(intent.initialConversationId);
+  }, [intent.initialConversationId, openConversationInFocusedPane]);
 
   // [effect] Show snackbar with the focused chat title after a history navigation in focused pane
   React.useEffect(() => {
@@ -316,12 +319,12 @@ export function AppChat() {
 
   // Chat actions
 
-  const handleConversationNewInFocusedPane = React.useCallback((forceNoRecycle?: boolean) => {
+  const handleConversationNewInFocusedPane = React.useCallback((forceNoRecycle: boolean, isIncognito: boolean) => {
 
     // create conversation (or recycle the existing top-of-stack empty conversation)
-    const conversationId = (recycleNewConversationId && !forceNoRecycle)
+    const conversationId = (recycleNewConversationId && !forceNoRecycle && !isIncognito)
       ? recycleNewConversationId
-      : prependNewConversation(getConversationSystemPurposeId(focusedPaneConversationId) ?? undefined);
+      : prependNewConversation(getConversationSystemPurposeId(focusedPaneConversationId) ?? undefined, isIncognito);
 
     // switch the focused pane to the new conversation
     handleOpenConversationInFocusedPane(conversationId);
@@ -486,23 +489,62 @@ export function AppChat() {
     optimaActions().openModelOptions(chatLLMId);
   }, []);
 
+  const handleMoveFocus = React.useCallback((direction: number, wholeList?: boolean) => {
+    // find the parent list
+    let messageListElement: HTMLElement | null;
+    const activeElement = document.activeElement as HTMLElement;
+    if (activeElement)
+      messageListElement = activeElement.closest('[role=chat-messages-list]') as HTMLElement;
+    else
+      messageListElement = document.querySelector('[role=chat-messages-list]') as HTMLElement;
+    if (!messageListElement) return;
+
+    // find the scrollable container and if we're at the bottom
+    const scrollContainer = messageListElement.closest('[role=scrollable]') as HTMLElement;
+    if (!scrollContainer) return;
+    const isAtBottom = Math.abs(scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight) < 1;
+
+    // determine the current message and next index
+    const messageElements = Array.from(messageListElement.querySelectorAll('[role=chat-message]')) as HTMLElement[];
+    const currentIndex = messageElements.findIndex(el => el.contains(activeElement));
+
+    // if going down and we're at/past the last message, scroll to bottom
+    const snapToBottom = direction > 0 && (wholeList || (currentIndex === -1 || currentIndex >= messageElements.length - 1));
+    const nextIndex = (wholeList && direction < 0) ? 0
+      : snapToBottom ? messageElements.length - 1
+        : (isAtBottom && direction < 0) ? currentIndex
+          : currentIndex === -1 ? (direction < 0 ? 0 : messageElements.length - 1)
+            : currentIndex + direction;
+    if (nextIndex < 0 || nextIndex >= messageElements.length) return;
+
+    // perform the smooth scroll and focus
+    const targetElement = messageElements[nextIndex];
+    targetElement.focus({ preventScroll: true, focusVisible: true } as FocusOptions);
+    targetElement.scrollIntoView({ behavior: 'smooth', block: snapToBottom ? 'end' : 'start' });
+  }, []);
+
   useGlobalShortcuts('AppChat', React.useMemo(() => [
     // focused conversation
     { key: 'z', ctrl: true, shift: true, disabled: isFocusedChatEmpty, action: handleMessageRegenerateLastInFocusedPane, description: 'Retry' },
     { key: 'b', ctrl: true, shift: true, disabled: isFocusedChatEmpty, action: handleMessageBeamLastInFocusedPane, description: 'Beam Edit' },
     { key: 'o', ctrl: true, action: handleConversationsImportFormFilePicker },
     { key: 's', ctrl: true, action: () => handleFileSaveConversation(focusedPaneConversationId) },
-    { key: 'n', ctrl: true, shift: true, action: handleConversationNewInFocusedPane },
+    { key: 'n', ctrl: true, shift: true, action: () => handleConversationNewInFocusedPane(false, false) },
     { key: 'x', ctrl: true, shift: true, action: () => isFocusedChatEmpty || (focusedPaneConversationId && handleConversationReset(focusedPaneConversationId)) },
     { key: 'd', ctrl: true, shift: true, action: () => focusedPaneConversationId && handleDeleteConversations([focusedPaneConversationId], false) },
     { key: '[', ctrl: true, action: () => handleNavigateHistoryInFocusedPane('back') },
     { key: ']', ctrl: true, action: () => handleNavigateHistoryInFocusedPane('forward') },
+    // change active message (in any possible panel)
+    { key: ShortcutKey.Up, ctrl: true, action: () => handleMoveFocus(-1) },
+    { key: ShortcutKey.Down, ctrl: true, action: () => handleMoveFocus(1) },
+    { key: ShortcutKey.Up, ctrl: true, shift: true, action: () => handleMoveFocus(-1, true) },
+    { key: ShortcutKey.Down, ctrl: true, shift: true, action: () => handleMoveFocus(1, true) },
     // open the dropdowns
     { key: 'l', ctrl: true, action: () => llmDropdownRef.current?.openListbox() /*, description: 'Open Models Dropdown'*/ },
     { key: 'p', ctrl: true, action: () => personaDropdownRef.current?.openListbox() /*, description: 'Open Persona Dropdown'*/ },
     // focused conversation llm
     { key: 'o', ctrl: true, shift: true, action: handleOpenChatLlmOptions },
-  ], [focusedPaneConversationId, handleConversationReset, handleConversationNewInFocusedPane, handleDeleteConversations, handleConversationsImportFormFilePicker, handleFileSaveConversation, handleMessageBeamLastInFocusedPane, handleMessageRegenerateLastInFocusedPane, handleNavigateHistoryInFocusedPane, handleOpenChatLlmOptions, isFocusedChatEmpty]));
+  ], [focusedPaneConversationId, handleConversationNewInFocusedPane, handleConversationReset, handleConversationsImportFormFilePicker, handleDeleteConversations, handleFileSaveConversation, handleMessageBeamLastInFocusedPane, handleMessageRegenerateLastInFocusedPane, handleMoveFocus, handleNavigateHistoryInFocusedPane, handleOpenChatLlmOptions, isFocusedChatEmpty]));
 
 
   return <>

@@ -50,13 +50,22 @@ export function safeErrorString(error: any): string | null {
   if (!error)
     return null;
 
+  // handle AggregateError
+  if (error instanceof AggregateError) {
+    const errors = error.errors.map(e => safeErrorString(e)).filter(Boolean);
+    return `AggregateError: ${errors.join('; ')}`;
+  }
+
   // descend into an 'error' object
   if (error.error)
     return safeErrorString(error.error);
 
   // choose the 'message' property if available
-  if (error.message)
+  if (error.message) {
+    if (error.message === 'AggregateError' && error.stack)
+      return `AggregateError: ${safeErrorString(error.stack)}`;
     return safeErrorString(error.message);
+  }
   if (typeof error === 'string')
     return error;
   if (typeof error === 'object') {

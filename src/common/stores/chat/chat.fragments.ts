@@ -95,7 +95,7 @@ export type DMessageErrorPart = { pt: 'error', error: string };
 
 export type DMessageImageRefPart = { pt: 'image_ref', dataRef: DMessageDataRef, altText?: string, width?: number, height?: number };
 
-export type DMessageDocPart = { pt: 'doc', vdt: DMessageDocMimeType, data: DMessageDataInline, ref: string, l1Title: string, meta?: DMessageDocMeta };
+export type DMessageDocPart = { pt: 'doc', vdt: DMessageDocMimeType, data: DMessageDataInline, ref: string, l1Title: string, version?: number, meta?: DMessageDocMeta };
 type DMessageDocMimeType =
 // | 'application/vnd.agi.ego.fragments'         // for attaching messages
 // | 'application/vnd.agi.imageRef'    // for image attachments with da - NO: makes no sense, as doc contains data
@@ -121,7 +121,7 @@ export type DMessageToolInvocationPart = {
   invocation: {
     type: 'function_call'
     name: string;             // Name of the function as passed from the definition
-    args: string | null;      // JSON-encoded, if null there are no args
+    args: string /*| null*/;  // JSON-encoded object (only objects are supported), if null there are no args and it's just a plain invocation
     // temporary, not stored
     _description?: string;    // Description from the definition
     _args_schema?: object;    // JSON Schema { type: 'object', properties: { ... } } from the definition
@@ -232,7 +232,7 @@ export function createImageContentFragment(dataRef: DMessageDataRef, altText?: s
   return _createContentFragment(_create_ImageRef_Part(dataRef, altText, width, height));
 }
 
-export function create_FunctionCallInvocation_ContentFragment(id: string, functionName: string, args: string | null): DMessageContentFragment {
+export function create_FunctionCallInvocation_ContentFragment(id: string, functionName: string, args: string /*| null*/): DMessageContentFragment {
   return _createContentFragment(_create_FunctionCallInvocation_Part(id, functionName, args));
 }
 
@@ -255,8 +255,8 @@ function _createContentFragment(part: DMessageContentFragment['part']): DMessage
 
 /// Attachment Fragments - Creation & Duplication
 
-export function createDocAttachmentFragment(l1Title: string, caption: string, vdt: DMessageDocMimeType, data: DMessageDataInline, ref: string, meta?: DMessageDocMeta, liveFileId?: LiveFileId): DMessageAttachmentFragment {
-  return _createAttachmentFragment(l1Title, caption, _create_Doc_Part(vdt, data, ref, l1Title, meta), liveFileId);
+export function createDocAttachmentFragment(l1Title: string, caption: string, vdt: DMessageDocMimeType, data: DMessageDataInline, ref: string, version: number, meta?: DMessageDocMeta, liveFileId?: LiveFileId): DMessageAttachmentFragment {
+  return _createAttachmentFragment(l1Title, caption, _create_Doc_Part(vdt, data, ref, l1Title, version, meta), liveFileId);
 }
 
 export function createImageAttachmentFragment(title: string, caption: string, dataRef: DMessageDataRef, imgAltText?: string, width?: number, height?: number): DMessageAttachmentFragment {
@@ -266,11 +266,11 @@ export function createImageAttachmentFragment(title: string, caption: string, da
 export function specialContentPartToDocAttachmentFragment(title: string, caption: string, vdt: DMessageDocMimeType, contentPart: DMessageContentFragment['part'], ref: string, docMeta?: DMessageDocMeta): DMessageAttachmentFragment {
   switch (true) {
     case isTextPart(contentPart):
-      return createDocAttachmentFragment(title, caption, vdt, createDMessageDataInlineText(contentPart.text, 'text/plain'), ref, docMeta);
+      return createDocAttachmentFragment(title, caption, vdt, createDMessageDataInlineText(contentPart.text, 'text/plain'), ref, 2 /* As we attach our messages, we start from 2 */, docMeta);
     case isImageRefPart(contentPart):
       return createImageAttachmentFragment(title, caption, _duplicate_DataReference(contentPart.dataRef), contentPart.altText, contentPart.width, contentPart.height);
     default:
-      return createDocAttachmentFragment('Error', 'Content to Attachment', vdt, createDMessageDataInlineText(`Conversion of '${contentPart.pt}' is not supported yet.`, 'text/plain'), ref, docMeta);
+      return createDocAttachmentFragment('Error', 'Content to Attachment', vdt, createDMessageDataInlineText(`Conversion of '${contentPart.pt}' is not supported yet.`, 'text/plain'), ref, 1 /* error has no version really */, docMeta);
   }
 }
 
@@ -315,8 +315,9 @@ function _duplicateFragment(fragment: DMessageFragment): DMessageFragment {
     case '_ft_sentinel':
       return _createSentinelFragment();
 
-    // default:
-    //   throw new Error('Invalid fragment');
+    default:
+      console.warn('[DEV] _duplicateFragment: Unknown fragment type, will duplicate as Error', { fragment });
+      return createErrorContentFragment(`Unknown fragment type '${(fragment as any)?.ft || '(undefined)'}'`);
   }
 }
 
@@ -331,15 +332,15 @@ function _create_Error_Part(error: string): DMessageErrorPart {
   return { pt: 'error', error };
 }
 
-function _create_Doc_Part(vdt: DMessageDocMimeType, data: DMessageDataInline, ref: string, l1Title: string, meta?: DMessageDocMeta): DMessageDocPart {
-  return { pt: 'doc', vdt, data, ref, l1Title, meta };
+function _create_Doc_Part(vdt: DMessageDocMimeType, data: DMessageDataInline, ref: string, l1Title: string, version: number, meta?: DMessageDocMeta): DMessageDocPart {
+  return { pt: 'doc', vdt, data, ref, l1Title, version, meta };
 }
 
 function _create_ImageRef_Part(dataRef: DMessageDataRef, altText?: string, width?: number, height?: number): DMessageImageRefPart {
   return { pt: 'image_ref', dataRef, altText, width, height };
 }
 
-function _create_FunctionCallInvocation_Part(id: string, functionName: string, args: string | null): DMessageToolInvocationPart {
+function _create_FunctionCallInvocation_Part(id: string, functionName: string, args: string /*| null*/): DMessageToolInvocationPart {
   return { pt: 'tool_invocation', id, invocation: { type: 'function_call', name: functionName, args } };
 }
 
@@ -366,7 +367,8 @@ function _create_Sentinel_Part(): _SentinelPart {
 function _duplicate_Part<TPart extends (DMessageContentFragment | DMessageAttachmentFragment | DMessageVoidFragment)['part']>(part: TPart): TPart {
   switch (part.pt) {
     case 'doc':
-      return _create_Doc_Part(part.vdt, _duplicate_InlineData(part.data), part.ref, part.l1Title, part.meta ? { ...part.meta } : undefined) as TPart;
+      const newDocVersion = Number(part.version || 1); // we don't increase the version on duplication (not sure we should?)
+      return _create_Doc_Part(part.vdt, _duplicate_InlineData(part.data), part.ref, part.l1Title, newDocVersion, part.meta ? { ...part.meta } : undefined) as TPart;
 
     case 'error':
       return _create_Error_Part(part.error) as TPart;
@@ -475,7 +477,7 @@ export function updateFragmentWithEditedText(
         const newFragment = create_FunctionCallInvocation_ContentFragment(
           part.id, // Keep same id
           part.invocation.name,
-          editedText || null, // args
+          editedText, // args (if empty, it calls the funciton without params)
         );
         return { ...newFragment, fId }; // Preserve original fId
       } else if (part.invocation.type === 'code_execution') {
@@ -534,6 +536,7 @@ export function updateFragmentWithEditedText(
         part.vdt,
         newDataInline,
         part.ref,
+        Number(part.version || 1) + 1, // Increment version as this has been edited - note: we could have used ?? to be more correct, but || is safer
         part.meta,
         liveFileId,
       );

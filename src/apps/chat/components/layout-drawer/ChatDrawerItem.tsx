@@ -55,6 +55,7 @@ export interface ChatNavigationItemData {
   isActive: boolean;
   isAlsoOpen: string | false;
   isEmpty: boolean;
+  isIncognito: boolean;
   title: string;
   userSymbol: string | undefined;
   userFlagsSummary: string | undefined;
@@ -97,6 +98,7 @@ function ChatDrawerItem(props: {
     conversationId,
     isActive,
     isAlsoOpen,
+    isIncognito,
     title,
     userSymbol,
     userFlagsSummary,
@@ -319,6 +321,9 @@ function ChatDrawerItem(props: {
         '&:hover > button': {
           opacity: 1, // fade in buttons when hovering, but by default wash them out a bit
         },
+        ...(isIncognito && {
+          filter: 'brightness(0.5) contrast(0.5)',
+        }),
       }}
     >
 
@@ -429,6 +434,10 @@ function ChatDrawerItem(props: {
         sx={{
           border: 'none', // there's a default border of 1px and invisible.. hmm
           position: 'relative', // for the progress bar
+          borderRadius: 'sm', // OPTIMA_NAV_RADIUS, // sync with the optima radius, because they need to match
+          ...isIncognito && {
+            filter: 'contrast(0)',
+          },
         }}
       >
 
