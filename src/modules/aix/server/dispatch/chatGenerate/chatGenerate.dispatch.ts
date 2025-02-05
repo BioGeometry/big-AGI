@@ -75,6 +75,7 @@ export function createChatGenerateDispatch(access: AixAPI_Access, model: AixAPI_
       };
 
     case 'azure':
+    case 'azuredeepseek':
     case 'deepseek':
     case 'groq':
     case 'lmstudio':

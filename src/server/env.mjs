@@ -25,6 +25,10 @@ export const env = createEnv({
     AZURE_OPENAI_API_ENDPOINT: z.string().url().optional(),
     AZURE_OPENAI_API_KEY: z.string().optional(),
 
+    // LLM: Azure DeepSeek
+    AZURE_DEEPSEEK_API_ENDPOINT: z.string().url().optional(),
+    AZURE_DEEPSEEK_API_KEY: z.string().optional(),
+
     // LLM: Anthropic
     ANTHROPIC_API_KEY: z.string().optional(),
     ANTHROPIC_API_HOST: z.string().url().optional(),

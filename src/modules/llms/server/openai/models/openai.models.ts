@@ -577,6 +577,17 @@ export const _knownOpenAIChatModels: ManualMappings = [
   },
   {
     isLatest: true,
+    idPrefix: 'gpt-4o-1120',
+    label: 'GPT-4o (2024-11-20)',
+    description: 'Latest gpt-4o snapshot from November 20th, 2024.',
+    contextWindow: 128000,
+    maxCompletionTokens: 16384,
+    trainingDataCutoff: 'Oct 2023',
+    interfaces: [LLM_IF_OAI_Chat, LLM_IF_OAI_Vision, LLM_IF_OAI_Fn, LLM_IF_OAI_Json, LLM_IF_OAI_PromptCaching], // + Structured Outputs
+    chatPrice: { input: 2.5, cache: { cType: 'oai-ac', read: 1.25 }, output: 10 },
+    benchmark: { cbaElo: 1264 + 1 },
+  },
+  {
     idPrefix: 'gpt-4o-0806',
     label: 'GPT-4o (2024-08-06)',
     description: 'Latest snapshot that supports Structured Outputs',

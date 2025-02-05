@@ -24,10 +24,11 @@ import { perplexityAIModelDescriptions, perplexityAIModelSort } from './models/p
 import { togetherAIModelsToModelDescriptions } from './models/together.models';
 import { wilreLocalAIModelsApplyOutputSchema, wireLocalAIModelsAvailableOutputSchema, wireLocalAIModelsListOutputSchema } from './localai.wiretypes';
 import { xaiModelDescriptions, xaiModelSort } from './models/xai.models';
+import { LLM_IF_OAI_Chat, LLM_IF_OAI_Reasoning, LLM_IF_HOTFIX_NoTemperature } from '~/common/stores/llms/llms.types';
 
 
 const openAIDialects = z.enum([
-  'azure', 'deepseek', 'groq', 'lmstudio', 'localai', 'mistral', 'openai', 'openpipe', 'openrouter', 'perplexity', 'togetherai', 'xai',
+  'azure', 'azuredeepseek', 'deepseek', 'groq', 'lmstudio', 'localai', 'mistral', 'openai', 'openpipe', 'openrouter', 'perplexity', 'togetherai', 'xai',
 ]);
 export type OpenAIDialects = z.infer<typeof openAIDialects>;
 
@@ -124,6 +125,21 @@ export const llmOpenAIRouter = createTRPCRouter({
               ...rest,
             };
           });
+        return { models };
+      }
+
+      // [Azure DeepSeek]: no need for model listing, we have a single model
+      if (access.dialect === 'azuredeepseek') {
+        models = [{
+          id: 'deepseek-r1',
+          label: 'DeepSeek Reasoner R1',
+        description: 'Reasoning model with Chain-of-Thought capabilities, 64K context length. No discount.',
+        contextWindow: 65536,
+        interfaces: [LLM_IF_OAI_Chat, LLM_IF_OAI_Reasoning, LLM_IF_HOTFIX_NoTemperature],
+        maxCompletionTokens: 8192,
+        chatPrice: { input: 0.55, output: 2.19, cache: { cType: 'oai-ac', read: 0.14 } },
+      },];
+
         return { models };
       }
 
@@ -358,13 +374,13 @@ export function openAIAccess(access: OpenAIAccessSchema, modelRefId: string | nu
       if (!azureKey || !azureHost)
         throw new Error('Missing Azure API Key or Host. Add it on the UI (Models Setup) or server side (your deployment).');
 
-      let url = azureHost;
+      let azureUrl = azureHost;
       if (apiPath.startsWith('/v1/')) {
         if (!modelRefId)
           throw new Error('Azure OpenAI API needs a deployment id');
-        url += `/openai/deployments/${modelRefId}/${apiPath.replace('/v1/', '')}?api-version=2023-07-01-preview`;
+        azureUrl += `/openai/deployments/${modelRefId}/${apiPath.replace('/v1/', '')}?api-version=2023-07-01-preview`;
       } else if (apiPath.startsWith('/openai/deployments'))
-        url += apiPath;
+        azureUrl += apiPath;
       else
         throw new Error('Azure OpenAI API path not supported: ' + apiPath);
 
@@ -373,7 +389,7 @@ export function openAIAccess(access: OpenAIAccessSchema, modelRefId: string | nu
           'Content-Type': 'application/json',
           'api-key': azureKey,
         },
-        url,
+        url: azureUrl,
       };
 
 
@@ -573,6 +589,31 @@ export function openAIAccess(access: OpenAIAccessSchema, modelRefId: string | nu
           'Authorization': `Bearer ${xaiKey}`,
         },
         url: DEFAULT_XAI_HOST + apiPath,
+      };
+
+    case 'azuredeepseek':
+      const azureDeepseekKey = access.oaiKey || '';
+      const azureDeepseekHost = fixupHost(access.oaiHost || '', apiPath);
+      if (!azureDeepseekKey || !azureDeepseekHost)
+        throw new Error('Missing Azure DeepSeek API Key or Host. Add it on the UI (Models Setup) or server side (your deployment).');
+
+      let azureDeepseekUrl = azureDeepseekHost;
+      if (apiPath.startsWith('/v1/')) {
+        // For chat completions, we don't need a deployment ID as there's only one model per endpoint
+        azureDeepseekUrl += `${apiPath}?api-version=2024-05-01-preview`;
+      } else if (apiPath === '/info') {
+        azureDeepseekUrl += `${apiPath}?api-version=2024-05-01-preview`;
+      } else {
+        throw new Error('Azure DeepSeek API path not supported: ' + apiPath);
+      }
+
+      return {
+        headers: {
+          'Content-Type': 'application/json',
+          'api-key': azureDeepseekKey,
+          'Authorization': `Bearer ${azureDeepseekKey}`,
+        },
+        url: azureDeepseekUrl,
       };
 
   }

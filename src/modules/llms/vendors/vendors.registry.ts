@@ -1,5 +1,6 @@
 import { ModelVendorAnthropic } from './anthropic/anthropic.vendor';
 import { ModelVendorAzure } from './azure/azure.vendor';
+import { ModelVendorAzureDeepseek } from './azure-deepseek/azure-deepseek.vendor';
 import { ModelVendorDeepseek } from './deepseek/deepseekai.vendor';
 import { ModelVendorGemini } from './gemini/gemini.vendor';
 import { ModelVendorGroq } from './groq/groq.vendor';
@@ -20,6 +21,7 @@ import type { IModelVendor } from './IModelVendor';
 export type ModelVendorId =
   | 'anthropic'
   | 'azure'
+  | 'azuredeepseek'
   | 'deepseek'
   | 'googleai'
   | 'groq'
@@ -39,6 +41,7 @@ export type ModelVendorId =
 const MODEL_VENDOR_REGISTRY: Record<ModelVendorId, IModelVendor> = {
   anthropic: ModelVendorAnthropic,
   azure: ModelVendorAzure,
+  azuredeepseek: ModelVendorAzureDeepseek,
   deepseek: ModelVendorDeepseek,
   googleai: ModelVendorGemini,
   groq: ModelVendorGroq,
