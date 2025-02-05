@@ -100,6 +100,8 @@ export function Fusion(props: {
 
   return (
     <BeamCard
+      role='beam-card'
+      tabIndex={-1}
       className={
         // (isIdle ? beamCardClasses.fusionIdle : '')
         (isError ? beamCardClasses.errored + ' ' : '')
@@ -115,6 +117,7 @@ export function Fusion(props: {
         factory={factory}
         isFusing={isFusing}
         isInterrupted={isStopped}
+        isMobile={props.isMobile}
         isUsable={isUsable}
         llmLabel={llmLabel}
         llmVendorIcon={llmVendorIcon}

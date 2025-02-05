@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { LLM_IF_ANT_PromptCaching, LLM_IF_OAI_Chat, LLM_IF_OAI_Complete, LLM_IF_OAI_Fn, LLM_IF_OAI_Json, LLM_IF_OAI_PromptCaching, LLM_IF_OAI_Realtime, LLM_IF_OAI_Vision, LLM_IF_SPECIAL_OAI_O1Preview } from '~/common/stores/llms/llms.types';
+import { LLMS_ALL_INTERFACES } from '~/common/stores/llms/llms.types';
 
 
 export type ModelDescriptionSchema = z.infer<typeof ModelDescription_schema>;
@@ -11,22 +11,6 @@ export type ModelDescriptionSchema = z.infer<typeof ModelDescription_schema>;
  * Note: this needs to be moved to the AixWire_API_ListModels namespace
  * HOWEVER if we did it now there will be some circular dependency issue
  */
-
-/// Interfaces
-
-// TODO: just remove this, and move to a capabilities array (I/O/...)
-// FIXME: keep this in sync with the client side on llms.types.ts
-const Interface_enum = z.enum([
-  LLM_IF_OAI_Chat,              // OpenAI Chat
-  LLM_IF_OAI_Fn,                // JSON mode?
-  LLM_IF_OAI_Vision,            // Vision mode?
-  LLM_IF_OAI_Json,              // Function calling
-  LLM_IF_OAI_Complete,          // Complete mode
-  LLM_IF_ANT_PromptCaching,     // Anthropic Prompt caching
-  LLM_IF_SPECIAL_OAI_O1Preview, // Special OAI O1 Preview
-  LLM_IF_OAI_PromptCaching,     // OpenAI Prompt caching
-  LLM_IF_OAI_Realtime,         // OpenAI Realtime
-]);
 
 
 /// Benchmark
@@ -53,8 +37,8 @@ const TieredPricing_schema = z.union([
   z.array(PriceUpTo_schema),
 ]);
 
-// NOTE: (!) keep this in sync with DChatGeneratePricing (llms.pricing.ts)
-const ChatGeneratePricing_schema = z.object({
+// NOTE: (!) keep this in sync with DPricingChatGenerate (llms.pricing.ts)
+const PricingChatGenerate_schema = z.object({
   input: TieredPricing_schema.optional(),
   output: TieredPricing_schema.optional(),
   // Future: Perplexity has a cost per request, consider this for future additions
@@ -78,6 +62,27 @@ const ChatGeneratePricing_schema = z.object({
 
 
 /// Model Description (out)
+const ModelParameterSpec_schema = z.object({
+  /**
+   * User-changeable parameters for this LLM.
+   *
+   * Uncommon idiosyncratic parameters for this model
+   * - we have only the 'extra' params here, as `llmRef`, `llmResponseTokens` and `llmTemperature` are common
+   * - see `llms.parameters.ts` for the full list
+   *
+   * NOTE: (!) keep this in sync with `DModelParameterId` (llms.parameters.ts) which is also used in AixAPI_Model when making the request
+   */
+  paramId: z.enum([
+    'llmTopP',
+    'llmVndGeminiShowThoughts',  // vendor-specific
+    'llmVndOaiReasoningEffort',  // vendor-specific
+    // Optimization: we are not using this, but linking the 'presence' of the spec to the vndOaiReasoningEffort spec.
+    // This may change in the future if OpenAI decouples reasoning effort and markdown restoration.
+    // 'llmVndOaiRestoreMarkdown',
+  ]),
+  required: z.boolean().optional(),
+  hidden: z.boolean().optional(),
+});
 
 export const ModelDescription_schema = z.object({
   id: z.string(),
@@ -86,12 +91,13 @@ export const ModelDescription_schema = z.object({
   updated: z.number().optional(),
   description: z.string(),
   contextWindow: z.number().nullable(),
-  interfaces: z.array(Interface_enum),
+  interfaces: z.array(z.enum(LLMS_ALL_INTERFACES)),
+  parameterSpecs: z.array(ModelParameterSpec_schema).optional(),
   maxCompletionTokens: z.number().optional(),
   // rateLimits: rateLimitsSchema.optional(),
   trainingDataCutoff: z.string().optional(),
   benchmark: BenchmarksScores_schema.optional(),
-  chatPrice: ChatGeneratePricing_schema.optional(),
+  chatPrice: PricingChatGenerate_schema.optional(),
   hidden: z.boolean().optional(),
   // TODO: add inputTypes/Kinds..
 });

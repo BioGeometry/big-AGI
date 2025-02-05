@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 
-import { createTRPCRouter, publicProcedure } from '~/server/api/trpc.server';
+import { createTRPCRouter, publicProcedure } from '~/server/trpc/trpc.server';
 import { env } from '~/server/env.mjs';
-import { fetchJsonOrTRPCThrow } from '~/server/api/trpc.router.fetchers';
+import { fetchJsonOrTRPCThrow } from '~/server/trpc/trpc.router.fetchers';
 
 import { T2iCreateImageOutput, t2iCreateImagesOutputSchema } from '~/modules/t2i/t2i.server';
 
@@ -13,15 +13,21 @@ import { fixupHost } from '~/common/util/urlUtils';
 import { OpenAIWire_API_Images_Generations, OpenAIWire_API_Models_List, OpenAIWire_API_Moderations_Create } from '~/modules/aix/server/dispatch/wiretypes/openai.wiretypes';
 
 import { ListModelsResponse_schema, ModelDescriptionSchema } from '../llm.server.types';
-import { azureModelToModelDescription, deepseekModelToModelDescription, groqModelSortFn, groqModelToModelDescription, lmStudioModelToModelDescription, localAIModelToModelDescription, openPipeModelDescriptions, openPipeModelSort, openPipeModelToModelDescriptions, openRouterModelFamilySortFn, openRouterModelToModelDescription, togetherAIModelsToModelDescriptions } from './models/models.data';
+import { azureModelToModelDescription, openAIModelFilter, openAIModelToModelDescription, openAISortModels } from './models/openai.models';
+import { deepseekModelFilter, deepseekModelSort, deepseekModelToModelDescription } from './models/deepseek.models';
+import { groqModelFilter, groqModelSortFn, groqModelToModelDescription } from './models/groq.models';
+import { lmStudioModelToModelDescription, localAIModelToModelDescription, localAIModelSortFn } from './models/models.data';
 import { mistralModelsSort, mistralModelToModelDescription } from './models/mistral.models';
-import { openAIModelFilter, openAIModelToModelDescription } from './models/openai.models';
+import { openPipeModelDescriptions, openPipeModelSort, openPipeModelToModelDescriptions } from './models/openpipe.models';
+import { openRouterModelFamilySortFn, openRouterModelToModelDescription } from './models/openrouter.models';
 import { perplexityAIModelDescriptions, perplexityAIModelSort } from './models/perplexity.models';
+import { togetherAIModelsToModelDescriptions } from './models/together.models';
 import { wilreLocalAIModelsApplyOutputSchema, wireLocalAIModelsAvailableOutputSchema, wireLocalAIModelsListOutputSchema } from './localai.wiretypes';
+import { xaiModelDescriptions, xaiModelSort } from './models/xai.models';
 
 
 const openAIDialects = z.enum([
-  'azure', 'deepseek', 'groq', 'lmstudio', 'localai', 'mistral', 'openai', 'openpipe', 'openrouter', 'perplexity', 'togetherai',
+  'azure', 'deepseek', 'groq', 'lmstudio', 'localai', 'mistral', 'openai', 'openpipe', 'openrouter', 'perplexity', 'togetherai', 'xai',
 ]);
 export type OpenAIDialects = z.infer<typeof openAIDialects>;
 
@@ -35,18 +41,18 @@ export const openAIAccessSchema = z.object({
 });
 export type OpenAIAccessSchema = z.infer<typeof openAIAccessSchema>;
 
-export const openAIModelSchema = z.object({
-  id: z.string(),
-  temperature: z.number().min(0).max(2).optional(),
-  maxTokens: z.number().min(1).max(1000000).optional(),
-});
-export type OpenAIModelSchema = z.infer<typeof openAIModelSchema>;
+// export const openAIModelSchema = z.object({
+//   id: z.string(),
+//   temperature: z.number().min(0).max(2).optional(),
+//   maxTokens: z.number().min(1).optional(),
+// });
+// export type OpenAIModelSchema = z.infer<typeof openAIModelSchema>;
 
-export const openAIHistorySchema = z.array(z.object({
-  role: z.enum(['assistant', 'system', 'user'/*, 'function'*/]),
-  content: z.string(),
-}));
-export type OpenAIHistorySchema = z.infer<typeof openAIHistorySchema>;
+// export const openAIHistorySchema = z.array(z.object({
+//   role: z.enum(['assistant', 'system', 'user'/*, 'function'*/]),
+//   content: z.string(),
+// }));
+// export type OpenAIHistorySchema = z.infer<typeof openAIHistorySchema>;
 
 
 // Router Input Schemas
@@ -95,7 +101,7 @@ export const llmOpenAIRouter = createTRPCRouter({
             model: z.string(), // the OpenAI model id
             owner: z.enum(['organization-owner']),
             id: z.string(), // the deployment name
-            status: z.enum(['succeeded']),
+            status: z.string(), // relaxed from z.enum(['succeeded']) for #744
             created_at: z.number(),
             updated_at: z.number(),
             object: z.literal('deployment'),
@@ -125,6 +131,9 @@ export const llmOpenAIRouter = createTRPCRouter({
       if (access.dialect === 'perplexity')
         return { models: perplexityAIModelDescriptions().sort(perplexityAIModelSort) };
 
+      // [xAI]: custom models listing
+      if (access.dialect === 'xai')
+        return { models: (await xaiModelDescriptions(access)).sort(xaiModelSort) };
 
       // [OpenAI-dialects]: fetch openAI-style for all but Azure (will be then used in each dialect)
       const openAIWireModelsResponse = await openaiGETOrThrow<OpenAIWire_API_Models_List.Response>(access, '/v1/models');
@@ -149,11 +158,14 @@ export const llmOpenAIRouter = createTRPCRouter({
 
         case 'deepseek':
           models = openAIModels
-            .map(({ id }) => deepseekModelToModelDescription(id));
+            .filter(({ id }) => deepseekModelFilter(id))
+            .map(({ id }) => deepseekModelToModelDescription(id))
+            .sort(deepseekModelSort);
           break;
 
         case 'groq':
           models = openAIModels
+            .filter(groqModelFilter)
             .map(groqModelToModelDescription)
             .sort(groqModelSortFn);
           break;
@@ -166,7 +178,8 @@ export const llmOpenAIRouter = createTRPCRouter({
         // [LocalAI]: map id to label
         case 'localai':
           models = openAIModels
-            .map(model => localAIModelToModelDescription(model.id));
+            .map(({ id }) => localAIModelToModelDescription(id))
+            .sort(localAIModelSortFn);
           break;
 
         case 'mistral':
@@ -186,47 +199,7 @@ export const llmOpenAIRouter = createTRPCRouter({
             .map((model): ModelDescriptionSchema => openAIModelToModelDescription(model.id, model.created))
 
             // custom OpenAI sort
-            .sort((a, b) => {
-
-              // fix the OpenAI model names to be chronologically sorted
-              function remapReleaseDate(id: string): string {
-                return id
-                  .replace('0314', '2023-03-14')
-                  .replace('0613', '2023-06-13')
-                  .replace('1106', '2023-11-06')
-                  .replace('0125', '2024-01-25');
-              }
-
-              // stuff with '[legacy]' at the bottom
-              const aLegacy = a.label.includes('[legacy]');
-              const bLegacy = b.label.includes('[legacy]');
-              if (aLegacy !== bLegacy)
-                return aLegacy ? 1 : -1;
-
-              // due to using by-label, sorting doesn't require special cases anymore
-              return remapReleaseDate(b.label).localeCompare(remapReleaseDate(a.label));
-
-              // move models with the link emoji (🔗) to the bottom
-              // const aLink = a.label.includes('🔗');
-              // const bLink = b.label.includes('🔗');
-              // if (aLink !== bLink)
-              //   return aLink ? 1 : -1;
-
-              // sort by model name
-              // return b.label.replace('🌟 ', '').localeCompare(a.label.replace('🌟 ', ''));
-
-              // sort by model ID~ish
-              // const aId = a.id.slice(0, 5);
-              // const bId = b.id.slice(0, 5);
-              // if (aId === bId) {
-              //   const aCount = a.id.split('-').length;
-              //   const bCount = b.id.split('-').length;
-              //   if (aCount === bCount)
-              //     return a.id.localeCompare(b.id);
-              //   return aCount - bCount;
-              // }
-              // return bId.localeCompare(aId);
-            });
+            .sort(openAISortModels);
           break;
 
         case 'openpipe':
@@ -374,6 +347,7 @@ const DEFAULT_OPENPIPE_HOST = 'https://app.openpipe.ai/api';
 const DEFAULT_OPENROUTER_HOST = 'https://openrouter.ai/api';
 const DEFAULT_PERPLEXITY_HOST = 'https://api.perplexity.ai';
 const DEFAULT_TOGETHERAI_HOST = 'https://api.together.xyz';
+const DEFAULT_XAI_HOST = 'https://api.x.ai';
 
 export function openAIAccess(access: OpenAIAccessSchema, modelRefId: string | null, apiPath: string): { headers: HeadersInit, url: string } {
   switch (access.dialect) {
@@ -529,8 +503,18 @@ export function openAIAccess(access: OpenAIAccessSchema, modelRefId: string | nu
       };
 
     case 'openrouter':
-      const orKey = access.oaiKey || env.OPENROUTER_API_KEY || '';
+      let orKey = access.oaiKey || env.OPENROUTER_API_KEY || '';
       const orHost = fixupHost(access.oaiHost || DEFAULT_OPENROUTER_HOST, apiPath);
+
+      // multi-key with random selection
+      if (orKey.includes(',')) {
+        const multiKeys = orKey
+          .split(',')
+          .map(key => key.trim())
+          .filter(Boolean);
+        orKey = multiKeys[Math.floor(Math.random() * multiKeys.length)];
+      }
+
       if (!orKey || !orHost)
         throw new Error('Missing OpenRouter API Key or Host. Add it on the UI (Models Setup) or server side (your deployment).');
 
@@ -576,6 +560,19 @@ export function openAIAccess(access: OpenAIAccessSchema, modelRefId: string | nu
           'Accept': 'application/json',
         },
         url: togetherHost + apiPath,
+      };
+
+
+    case 'xai':
+      const xaiKey = access.oaiKey || env.XAI_API_KEY || '';
+      if (!xaiKey)
+        throw new Error('Missing xAI API Key. Add it on the UI (Models Setup) or server side (your deployment).');
+      return {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${xaiKey}`,
+        },
+        url: DEFAULT_XAI_HOST + apiPath,
       };
 
   }

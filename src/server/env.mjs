@@ -60,6 +60,9 @@ export const env = createEnv({
     // LLM: Together AI
     TOGETHERAI_API_KEY: z.string().optional(),
 
+    // LLM: xAI
+    XAI_API_KEY: z.string().optional(),
+
 
     // Helicone - works on both OpenAI and Anthropic vendors
     HELICONE_API_KEY: z.string().optional(),
@@ -86,9 +89,6 @@ export const env = createEnv({
     HTTP_BASIC_AUTH_USERNAME: z.string().optional(),
     HTTP_BASIC_AUTH_PASSWORD: z.string().optional(),
 
-    // Backend: Analytics flags (e.g. which hostname responds) for managed installs
-    BACKEND_ANALYTICS: z.string().optional().transform(list => (list || '').split(';').filter(flag => !!flag)),
-
     // Build-time configuration (ignore)
     BIG_AGI_BUILD: z.enum(['standalone', 'static']).optional(),
 
@@ -108,11 +108,6 @@ export const env = createEnv({
     // Frontend: server to use for PlantUML rendering
     NEXT_PUBLIC_PLANTUML_SERVER_URL: z.string().url().optional(),
 
-  },
-
-  onValidationError: error => {
-    console.error('❌ Invalid environment variables:', error.issues);
-    throw new Error('Invalid environment variable');
   },
 
   // matches user expectations - see https://github.com/enricoros/big-AGI/issues/279

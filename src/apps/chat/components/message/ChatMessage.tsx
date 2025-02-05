@@ -6,6 +6,7 @@ import type { SxProps } from '@mui/joy/styles/types';
 import { Box, ButtonGroup, CircularProgress, Divider, IconButton, ListDivider, ListItem, ListItemDecorator, MenuItem, Switch, Tooltip, Typography } from '@mui/joy';
 import { ClickAwayListener, Popper } from '@mui/base';
 import AccountTreeOutlinedIcon from '@mui/icons-material/AccountTreeOutlined';
+import AlternateEmailIcon from '@mui/icons-material/AlternateEmail';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -15,6 +16,7 @@ import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import ForkRightIcon from '@mui/icons-material/ForkRight';
 import FormatBoldIcon from '@mui/icons-material/FormatBold';
 import FormatPaintOutlinedIcon from '@mui/icons-material/FormatPaintOutlined';
+import InsertLinkIcon from '@mui/icons-material/InsertLink';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import NotificationsOutlinedIcon from '@mui/icons-material/NotificationsOutlined';
@@ -22,8 +24,6 @@ import RecordVoiceOverOutlinedIcon from '@mui/icons-material/RecordVoiceOverOutl
 import ReplayIcon from '@mui/icons-material/Replay';
 import ReplyAllRoundedIcon from '@mui/icons-material/ReplyAllRounded';
 import ReplyRoundedIcon from '@mui/icons-material/ReplyRounded';
-import StarOutlineRoundedIcon from '@mui/icons-material/StarOutlineRounded';
-import StarRoundedIcon from '@mui/icons-material/StarRounded';
 import StrikethroughSIcon from '@mui/icons-material/StrikethroughS';
 import TelegramIcon from '@mui/icons-material/Telegram';
 import TextureIcon from '@mui/icons-material/Texture';
@@ -35,7 +35,7 @@ import { ModelVendorAnthropic } from '~/modules/llms/vendors/anthropic/anthropic
 
 import { AnthropicIcon } from '~/common/components/icons/vendors/AnthropicIcon';
 import { ChatBeamIcon } from '~/common/components/icons/ChatBeamIcon';
-import { CloseableMenu } from '~/common/components/CloseableMenu';
+import { CloseablePopup } from '~/common/components/CloseablePopup';
 import { DMessage, DMessageId, DMessageUserFlag, DMetaReferenceItem, MESSAGE_FLAG_AIX_SKIP, MESSAGE_FLAG_NOTIFY_COMPLETE, MESSAGE_FLAG_STARRED, MESSAGE_FLAG_VND_ANT_CACHE_AUTO, MESSAGE_FLAG_VND_ANT_CACHE_USER, messageFragmentsReduceText, messageHasUserFlag } from '~/common/stores/chat/chat.message';
 import { KeyStroke } from '~/common/components/KeyStroke';
 import { MarkHighlightIcon } from '~/common/components/icons/MarkHighlightIcon';
@@ -44,6 +44,7 @@ import { adjustContentScaling, themeScalingMap, themeZIndexChatBubble } from '~/
 import { avatarIconSx, makeMessageAvatarIcon, messageBackground, useMessageAvatarLabel } from '~/common/util/dMessageUtils';
 import { copyToClipboard } from '~/common/util/clipboardUtils';
 import { createTextContentFragment, DMessageFragment, DMessageFragmentId, updateFragmentWithEditedText } from '~/common/stores/chat/chat.fragments';
+import { useFragmentBuckets } from '~/common/stores/chat/hooks/useFragmentBuckets';
 import { useUIPreferencesStore } from '~/common/state/store-ui';
 import { useUXLabsStore } from '~/common/state/store-ux-labs';
 
@@ -54,7 +55,6 @@ import { ImageAttachmentFragments } from './fragments-attachment-image/ImageAtta
 import { InReferenceToList } from './in-reference-to/InReferenceToList';
 import { messageAsideColumnSx, messageAvatarLabelAnimatedSx, messageAvatarLabelSx, messageZenAsideColumnSx } from './ChatMessage.styles';
 import { setIsNotificationEnabledForModel, useChatShowTextDiff } from '../../store-app-chat';
-import { useFragmentBuckets } from './useFragmentBuckets';
 import { useSelHighlighterMemo } from './useSelHighlighterMemo';
 
 
@@ -223,7 +223,7 @@ export function ChatMessage(props: {
 
 
   // TODO: fix the diffing
-  // const textDiffs = useSanityTextDiffs(messageText, props.diffPreviousText, showDiff);
+  // const wordsDiff = useWordsDifference(textSubject, props.diffPreviousText, showDiff);
 
 
   const { onMessageAssistantFrom, onMessageDelete, onMessageFragmentAppend, onMessageFragmentDelete, onMessageFragmentReplace } = props;
@@ -566,6 +566,11 @@ export function ChatMessage(props: {
     // style: when the user skips the message
     ...(isUserMessageSkipped && messageSkippedSx),
 
+    // style: when the message is being edited
+    ...(isEditingText && {
+      zIndex: 1, // this is to make the whole message appear on top of Beam Scatter > RayControlsMemo
+    }),
+
     // for: ENABLE_COPY_MESSAGE_OVERLAY
     // '&:hover > button': { opacity: 1 },
 
@@ -573,7 +578,7 @@ export function ChatMessage(props: {
     display: 'block', // this is Needed, otherwise there will be a horizontal overflow
 
     ...props.sx,
-  }), [adjContentScaling, backgroundColor, isUserMessageSkipped, isUserStarred, isVndAndCacheAuto, isVndAndCacheUser, props.sx, uiComplexityMode]);
+  }), [adjContentScaling, backgroundColor, isEditingText, isUserMessageSkipped, isUserStarred, isVndAndCacheAuto, isVndAndCacheUser, props.sx, uiComplexityMode]);
 
 
   // avatar icon & label & tooltip
@@ -722,7 +727,7 @@ export function ChatMessage(props: {
 
             onFragmentBlank={handleFragmentNew}
             onFragmentDelete={handleFragmentDelete}
-            onFragmentReplace={handleFragmentReplace}
+            onFragmentReplace={!props.onMessageFragmentReplace ? undefined : handleFragmentReplace}
             onMessageDelete={props.onMessageDelete ? handleOpsDelete : undefined}
 
             onContextMenu={(props.onMessageFragmentReplace && ENABLE_CONTEXT_MENU) ? handleBlocksContextMenu : undefined}
@@ -791,10 +796,11 @@ export function ChatMessage(props: {
 
       {/* Message Operations Menu (3 dots) */}
       {!!opsMenuAnchor && (
-        <CloseableMenu
-          dense placement='bottom-end'
-          open={true} anchorEl={opsMenuAnchor} onClose={handleCloseOpsMenu}
-          sx={{ minWidth: 280 }}
+        <CloseablePopup
+          menu anchorEl={opsMenuAnchor} onClose={handleCloseOpsMenu}
+          dense
+          minWidth={280}
+          placement={fromAssistant ? 'auto-start' : 'auto-end'}
         >
 
           {fromSystem && (
@@ -822,11 +828,15 @@ export function ChatMessage(props: {
             {/* Starred */}
             {!!onMessageToggleUserFlag && (
               <MenuItem onClick={handleOpsToggleStarred} sx={{ flexGrow: 0, px: 1 }}>
-                <Tooltip disableInteractive title={!isUserStarred ? 'Star message - use @ to refer to it later' : 'Unstar'}>
+                <Tooltip disableInteractive title={!isUserStarred ? 'Link message - use @ to refer to it from another chat' : 'Remove link'}>
                   {isUserStarred
-                    ? <StarRoundedIcon color='primary' sx={{ fontSize: 'xl2' }} />
-                    : <StarOutlineRoundedIcon sx={{ fontSize: 'xl2' }} />
+                    ? <AlternateEmailIcon color='primary' sx={{ fontSize: 'xl' }} />
+                    : <InsertLinkIcon sx={{ rotate: '45deg' }} />
                   }
+                  {/*{isUserStarred*/}
+                  {/*  ? <StarRoundedIcon color='primary' sx={{ fontSize: 'xl2' }} />*/}
+                  {/*  : <StarOutlineRoundedIcon sx={{ fontSize: 'xl2' }} />*/}
+                  {/*}*/}
                 </Tooltip>
               </MenuItem>
             )}
@@ -856,7 +866,7 @@ export function ChatMessage(props: {
             </MenuItem>
           )}
           {/* Aix Skip Message */}
-          {!messagePendingIncomplete && (
+          {!messagePendingIncomplete && !!props.onMessageToggleUserFlag && (
             <MenuItem onClick={handleOpsToggleSkipMessage}>
               <ListItemDecorator>{isUserMessageSkipped ? <VisibilityOffIcon sx={{ color: 'danger.plainColor' }} /> : <VisibilityIcon />}</ListItemDecorator>
               {isUserMessageSkipped ? 'Unskip' : 'Skip AI processing'}
@@ -941,7 +951,7 @@ export function ChatMessage(props: {
                   : <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'space-between', gap: 1 }}>Beam Edit<KeyStroke variant='outlined' combo='Ctrl + Shift + B' /></Box>}
             </MenuItem>
           )}
-        </CloseableMenu>
+        </CloseablePopup>
       )}
 
 
@@ -960,7 +970,7 @@ export function ChatMessage(props: {
                 backgroundColor: 'background.popup',
                 border: '1px solid',
                 borderColor: 'primary.outlinedBorder',
-                boxShadow: '0px 4px 24px -4px rgb(var(--joy-palette-neutral-darkChannel) / 50%)',
+                boxShadow: '0px 4px 24px -8px rgb(var(--joy-palette-neutral-darkChannel) / 50%)',
                 mb: 1.5,
                 ml: -1.5,
                 alignItems: 'center',
@@ -1044,10 +1054,11 @@ export function ChatMessage(props: {
 
       {/* Context (Right-click) Menu */}
       {!!contextMenuAnchor && (
-        <CloseableMenu
-          dense placement='bottom-start'
-          open={true} anchorEl={contextMenuAnchor} onClose={closeContextMenu}
-          sx={{ minWidth: 220 }}
+        <CloseablePopup
+          menu anchorEl={contextMenuAnchor} onClose={closeContextMenu}
+          dense
+          minWidth={220}
+          placement='bottom-start'
         >
           <MenuItem onClick={handleOpsCopy} sx={{ flex: 1, alignItems: 'center' }}>
             <ListItemDecorator><ContentCopyIcon /></ListItemDecorator>
@@ -1066,7 +1077,7 @@ export function ChatMessage(props: {
             <ListItemDecorator>{props.isSpeaking ? <CircularProgress size='sm' /> : <RecordVoiceOverOutlinedIcon />}</ListItemDecorator>
             Speak
           </MenuItem>}
-        </CloseableMenu>
+        </CloseablePopup>
       )}
 
     </Box>

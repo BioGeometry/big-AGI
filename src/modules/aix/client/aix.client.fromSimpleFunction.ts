@@ -2,7 +2,7 @@ import { ZodSchema } from 'zod';
 import { JsonSchema7ObjectType, zodToJsonSchema } from 'zod-to-json-schema';
 
 import type { AixTools_FunctionCallDefinition } from '../server/api/aix.wiretypes';
-import { DMessageContentFragment, DMessageToolInvocationPart, isContentFragment } from '~/common/stores/chat/chat.fragments';
+import { DMessageContentFragment, DMessageToolInvocationPart, DMessageVoidFragment, isContentFragment } from '~/common/stores/chat/chat.fragments';
 
 
 // configuration
@@ -17,7 +17,7 @@ export type AixClientFunctionCallToolDefinition = {
    * We only accept objects, not arrays - as downstream APIs have spotty implementation for non-object.
    * If the function does not take any inputs, use `Zod.object({})` or Zod.void().
    */
-  inputSchema: ZodSchema<object | void>;
+  inputSchema: ZodSchema<object /*| void*/>;
 }
 
 
@@ -70,7 +70,7 @@ function _recursiveObjectSchemaCleanup(obj: Record<string, any>, thisKey?: strin
 
 
 /** Extract the function name from the Aix FunctionCall Tool Definition */
-export function aixRequireSingleFunctionCallInvocation(fragments: DMessageContentFragment[], expectedFunctionName: string, allowThinkPart: boolean, debugLabel: string): {
+export function aixRequireSingleFunctionCallInvocation(fragments: (DMessageContentFragment | DMessageVoidFragment)[], expectedFunctionName: string, allowThinkPart: boolean, debugLabel: string): {
   invocation: Extract<DMessageToolInvocationPart['invocation'], { type: 'function_call' }>;
   argsObject: object;
 } {

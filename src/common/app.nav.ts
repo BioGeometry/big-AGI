@@ -55,12 +55,12 @@ export interface NavItemApp extends ItemBase {
   route: string,
   landingRoute?: string,  // specify a different route than the nextjs page router route, to land to
   barTitle?: string,      // set to override the name as the bar title (unless custom bar content is used)
-  appMenuToPanel?: boolean, // set to true to open the app menu in a panel
   hideOnMobile?: boolean, // set to true to hide the icon on mobile, unless this is the active app
   hideIcon?: boolean
     | (() => boolean),    // set to true to hide the icon, unless this is the active app
   hideBar?: boolean,      // set to true to hide the page bar
   hideDrawer?: boolean,   // set to true to hide the drawer
+  panelAsMenu?: boolean,  // set to true to use the popup menu as the panel
   hideNav?: boolean
     | (() => boolean),    // set to hide the Nav bar (note: must have a way to navigate back)
   fullWidth?: boolean,    // set to true to override the user preference
@@ -98,7 +98,6 @@ export const navItems: {
       iconActive: TextsmsIcon,
       type: 'app',
       route: '/',
-      appMenuToPanel: true,
     },
     {
       name: 'Call',
@@ -108,6 +107,7 @@ export const navItems: {
       type: 'app',
       route: '/call',
       hideDrawer: true,
+      panelAsMenu: true,
       fullWidth: true,
     },
     {
@@ -158,7 +158,7 @@ export const navItems: {
       icon: () => null,
     },
     {
-      name: 'Personas',
+      name: 'Create Personas',
       icon: Diversity2Icon, // was: Outlined.. but they look the same
       // iconActive: Diversity2Icon,
       type: 'app',
@@ -200,13 +200,15 @@ export const navItems: {
       _delete: true,
     },
     {
-      name: 'Shared Chat',
+      name: 'Shared Chats',
+      barTitle: 'Shared Chat',
       icon: IosShareOutlinedIcon,
       iconActive: IosShareIcon,
       type: 'app',
       route: '/link/chat/[chatLinkId]',
       landingRoute: '/link/chat/list',
       hideOnMobile: true,
+      panelAsMenu: true,
       hideIcon: hasNoChatLinkItems,
       hideNav: hasNoChatLinkItems,
     },

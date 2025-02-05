@@ -1,5 +1,5 @@
 import { safeErrorString } from '~/server/wire';
-import { serverSideId } from '~/server/api/trpc.nanoid';
+import { serverSideId } from '~/server/trpc/trpc.nanoid';
 
 import type { AixWire_Particles } from '../../../api/aix.wiretypes';
 import type { ChatGenerateParseFunction } from '../chatGenerate.dispatch';
@@ -62,6 +62,11 @@ export function createOpenAIChatCompletionsChunkParser(): ChatGenerateParseFunct
     // Throws on malformed event data
     // ```Can you extend the Zod chunk response object parsing (all optional) to include the missing data? The following is an exampel of the object I received:```
     const chunkData = JSON.parse(eventData); // this is here just for ease of breakpoint, otherwise it could be inlined
+
+    // [OpenRouter] transmits upstream errors pre-parsing (object wouldn't be valid)
+    if (_forwardOpenRouterDataError(chunkData, pt))
+      return;
+
     const json = OpenAIWire_API_Chat_Completions.ChunkResponse_schema.parse(chunkData);
 
     // -> Model
@@ -131,9 +136,24 @@ export function createOpenAIChatCompletionsChunkParser(): ChatGenerateParseFunct
       if (typeof delta.content === 'string') {
 
         accumulator.content = (accumulator.content || '') + delta.content;
-        pt.appendText(delta.content);
+        pt.appendAutoText_weak(delta.content);
 
-      } else if (delta.content !== undefined && delta.content !== null)
+      }
+      // delta: Reasoning Content [Deepseek, 2025-01-20]
+      else if (typeof delta.reasoning_content === 'string') {
+
+        // Note: not using the accumulator as it's a relic of the past probably
+        pt.appendReasoningText(delta.reasoning_content);
+
+      }
+      // delta: Reasoning [OpenRouter, 2025-01-24]
+      else if (typeof delta.reasoning === 'string') {
+
+        // Note: not using the accumulator as it's a relic of the past probably
+        pt.appendReasoningText(delta.reasoning);
+
+      }
+      else if (delta.content !== undefined && delta.content !== null)
         throw new Error(`unexpected delta content type: ${typeof delta.content}`);
 
       // delta: Tool Calls
@@ -202,15 +222,10 @@ export function createOpenAIChatCompletionsParserNS(): ChatGenerateParseFunction
     // Throws on malformed event data
     const completeData = JSON.parse(eventData);
 
-    // [OpenRouter] transmits upstream errors as a single field here
-    // Note: we perform pre-decoding as the parser will throw on error
-    if (completeData.error) {
-      // An upstream error will be transmitted as text (throw to transmit as 'error')
-      if ('message' in completeData.error && 'code' in completeData.error)
-        return pt.setDialectTerminatingIssue(completeData.error.message, IssueSymbols.Generic);
-      else
-        console.log('AIX: OpenAI-dispatch-NS error:', completeData.error);
-    }
+    // [OpenRouter] transmits upstream errors pre-parsing (object wouldn't be valid)
+    if (_forwardOpenRouterDataError(completeData, pt))
+      return;
+
     // [OpenAI] we don't know yet if warning messages are sent in non-streaming - for now we log
     if (completeData.warning)
       console.log('AIX: OpenAI-dispatch-NS warning:', completeData.warning);
@@ -245,8 +260,10 @@ export function createOpenAIChatCompletionsParserNS(): ChatGenerateParseFunction
 
       // message: Text
       if (typeof message.content === 'string') {
-        if (message.content)
+        if (message.content) {
+          // we will return the EXACT content for non-streaming calls, hence we don't call `appendAutoText_weak` here
           pt.appendText(message.content);
+        }
       } else if (message.content !== undefined && message.content !== null)
         throw new Error(`unexpected message content type: ${typeof message.content}`);
 
@@ -313,7 +330,7 @@ function _fromOpenAIUsage(usage: OpenAIWire_API_Chat_Completions.Response['usage
     return undefined;
 
   // Require at least the completion tokens, or issue a DEV warning otherwise
-  if (!usage.completion_tokens) {
+  if (usage.completion_tokens === undefined) {
     // Warn, so we may adjust this usage parsing for Non-OpenAI APIs
     console.log('[DEV] AIX: OpenAI-dispatch missing completion tokens in usage', { usage });
     return undefined;
@@ -339,6 +356,16 @@ function _fromOpenAIUsage(usage: OpenAIWire_API_Chat_Completions.Response['usage
     }
   }
 
+  // [DeepSeek] Input redistribution: Cache Read
+  if (usage.prompt_cache_hit_tokens !== undefined) {
+    const TCacheRead = usage.prompt_cache_hit_tokens;
+    if (TCacheRead > 0) {
+      metricsUpdate.TCacheRead = TCacheRead;
+      if (usage.prompt_cache_miss_tokens !== undefined)
+        metricsUpdate.TIn = usage.prompt_cache_miss_tokens;
+    }
+  }
+
   // TODO Input redistribution: Audio tokens
 
   // Output Metrics
@@ -355,4 +382,36 @@ function _fromOpenAIUsage(usage: OpenAIWire_API_Chat_Completions.Response['usage
     metricsUpdate.dtStart = timeToFirstEvent;
 
   return metricsUpdate;
+}
+
+/**
+ * If there's an error in the pre-decoded message, push it down to the particle transmitter.
+ */
+function _forwardOpenRouterDataError(parsedData: any, pt: IParticleTransmitter) {
+
+  // operate on .error
+  if (!parsedData || !parsedData.error) return false;
+  const { error } = parsedData;
+
+  // require .message/.code to consider this a valid error object
+  if (!(typeof error === 'object') || !('message' in error) || !('code' in error)) {
+    console.log('AIX: OpenAI-dispatch ignored error:', { error });
+    return false;
+  }
+
+  // prepare the text message
+  let errorMessage = safeErrorString(error) || 'unknown.';
+
+  // [OpenRouter] we may have a more specific error message inside the 'metadata' field
+  if ('metadata' in error && typeof error.metadata === 'object') {
+    const { metadata } = error;
+    if ('provider_name' in metadata && 'raw' in metadata)
+      errorMessage += ` -- cause: ${safeErrorString(metadata.provider_name)} error: ${safeErrorString(metadata.raw)}`;
+    else
+      errorMessage += ` -- cause: ${safeErrorString(metadata)}`;
+  }
+
+  // Transmit the error as text - note: throw if you want to transmit as 'error'
+  pt.setDialectTerminatingIssue(errorMessage, IssueSymbols.Generic);
+  return true;
 }

@@ -6,35 +6,20 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 
-import type { DChatGeneratePricing } from '~/common/stores/llms/llms.pricing';
+import type { DPricingChatGenerate } from '~/common/stores/llms/llms.pricing';
 import type { DLLMId } from '~/common/stores/llms/llms.types';
 import { FormLabelStart } from '~/common/components/forms/FormLabelStart';
 import { GoodModal } from '~/common/components/modals/GoodModal';
 import { llmsStoreActions } from '~/common/stores/llms/store-llms';
 import { useDefaultLLMIDs, useLLM } from '~/common/stores/llms/llms.hooks';
 
-import { findModelVendor } from '../vendors/vendors.registry';
+import { LLMOptionsGlobal } from './LLMOptionsGlobal';
 
 
-function VendorLLMOptionsComponent(props: { llmId: DLLMId }) {
-  // get LLM (warning: this will refresh all children components on every change of any LLM field)
-  const llm = useLLM(props.llmId);
-  if (!llm)
-    return 'Options issue: LLM not found for id ' + props.llmId;
+function prettyPricingComponent(pricingChatGenerate: DPricingChatGenerate): React.ReactNode {
+  if (!pricingChatGenerate) return 'Pricing not available';
 
-  // get vendor
-  const vendor = findModelVendor(llm.vId);
-  if (!vendor)
-    return `Options issue: Vendor not found for LLM ${props.llmId}, service ${llm.sId}, vendor ${llm.vId}`;
-
-  return <vendor.LLMOptionsComponent llm={llm} />;
-}
-
-
-function prettyPricingComponent(chatPricing: DChatGeneratePricing): React.ReactNode {
-  if (!chatPricing) return 'Pricing not available';
-
-  const formatPrice = (price: DChatGeneratePricing['input']): string => {
+  const formatPrice = (price: DPricingChatGenerate['input']): string => {
     if (!price) return 'N/A';
     if (price === 'free') return 'Free';
     if (typeof price === 'number') return `$${price.toFixed(2)}`;
@@ -43,19 +28,19 @@ function prettyPricingComponent(chatPricing: DChatGeneratePricing): React.ReactN
     return 'Unknown';
   };
 
-  const inputPrice = formatPrice(chatPricing.input);
-  const outputPrice = formatPrice(chatPricing.output);
+  const inputPrice = formatPrice(pricingChatGenerate.input);
+  const outputPrice = formatPrice(pricingChatGenerate.output);
 
   let cacheInfo = '';
-  if (chatPricing.cache) {
-    switch (chatPricing.cache.cType) {
+  if (pricingChatGenerate.cache) {
+    switch (pricingChatGenerate.cache.cType) {
       case 'ant-bp': {
-        const { read, write, duration } = chatPricing.cache;
+        const { read, write, duration } = pricingChatGenerate.cache;
         cacheInfo = `Cache: Read ${formatPrice(read)}, Write ${formatPrice(write)}, Duration: ${duration}s`;
         break;
       }
       case 'oai-ac': {
-        const { read } = chatPricing.cache;
+        const { read } = pricingChatGenerate.cache;
         cacheInfo = `Cache: Read ${formatPrice(read)}`;
         break;
       }
@@ -113,7 +98,7 @@ export function LLMOptionsModal(props: { id: DLLMId, onClose: () => void }) {
     >
 
       <Box sx={{ display: 'grid', gap: 'var(--Card-padding)' }}>
-        <VendorLLMOptionsComponent llmId={props.id} />
+        <LLMOptionsGlobal llm={llm} />
       </Box>
 
       <Divider />
@@ -147,7 +132,7 @@ export function LLMOptionsModal(props: { id: DLLMId, onClose: () => void }) {
 
       <FormControl orientation='horizontal' sx={{ flexWrap: 'nowrap' }}>
         <FormLabelStart title='Details' sx={{ minWidth: 80 }} onClick={() => setShowDetails(!showDetails)} />
-        {showDetails && <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+        {showDetails && <Box sx={{ display: 'flex', flexDirection: 'column', wordBreak: 'break-word', gap: 1 }}>
           {!!llm.description && <Typography level='body-sm'>
             {llm.description}
           </Typography>}
@@ -162,7 +147,9 @@ export function LLMOptionsModal(props: { id: DLLMId, onClose: () => void }) {
             {/*· tags: {llm.tags.join(', ')}*/}
             {!!llm.pricing?.chat && prettyPricingComponent(llm.pricing.chat)}
             {/*{!!llm.benchmark && <>benchmark: <b>{llm.benchmark.cbaElo?.toLocaleString() || '(unk) '}</b> CBA Elo<br /></>}*/}
-            config: {JSON.stringify(llm.options)}
+            {llm.parameterSpecs?.length > 0 && <>options: {llm.parameterSpecs.map(ps => ps.paramId).join(', ')}<br /></>}
+            {Object.keys(llm.initialParameters || {}).length > 0 && <>initial parameters: {JSON.stringify(llm.initialParameters)}<br /></>}
+            {Object.keys(llm.userParameters || {}).length > 0 && <>user parameters: {JSON.stringify(llm.userParameters)}<br /></>}
           </Typography>
         </Box>}
       </FormControl>
