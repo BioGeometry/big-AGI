@@ -32,10 +32,10 @@ type TRequestMessages = TRequest['messages'];
 export function aixToOpenAIChatCompletions(openAIDialect: OpenAIDialects, model: AixAPI_Model, chatGenerate: AixAPIChatGenerate_Request, jsonOutput: boolean, streaming: boolean): TRequest {
 
   // Dialect incompatibilities -> Hotfixes
-  const hotFixAlternateUserAssistantRoles = openAIDialect === 'deepseek' || openAIDialect === 'perplexity';
+  const hotFixAlternateUserAssistantRoles = openAIDialect === 'deepseek' || openAIDialect === 'azuredeepseek' || openAIDialect === 'perplexity';
   const hotFixRemoveEmptyMessages = openAIDialect === 'perplexity';
-  const hotFixRemoveStreamOptions = openAIDialect === 'azure' || openAIDialect === 'mistral';
-  const hotFixSquashMultiPartText = openAIDialect === 'deepseek';
+  const hotFixRemoveStreamOptions = openAIDialect === 'azure' || openAIDialect === 'azuredeepseek' || openAIDialect === 'mistral';
+  const hotFixSquashMultiPartText = openAIDialect === 'deepseek' || openAIDialect === 'azuredeepseek';
   const hotFixThrowCannotFC = openAIDialect === 'openrouter' /* OpenRouter FC support is not good (as of 2024-07-15) */ || openAIDialect === 'perplexity';
   const hotFixVndORIncludeReasoning = openAIDialect === 'openrouter'; // [OpenRouter, 2025-01-24] has a special `include_reasoning` field to show the chain of thought
 
