@@ -95,7 +95,7 @@ export const llmOpenAIRouter = createTRPCRouter({
       // [Azure]: use an older 'deployments' API to enumerate the models, and a modified OpenAI id to description mapping
       if (access.dialect === 'azure') {
         const azureModels = await openaiGETOrThrow(access, `/openai/deployments?api-version=2023-03-15-preview`);
-        console.log(azureModels);
+        // console.log(azureModels);
 
         const wireAzureListDeploymentsSchema = z.object({
           data: z.array(z.object({
