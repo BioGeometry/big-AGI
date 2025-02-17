@@ -67,6 +67,8 @@ export const env = createEnv({
     // LLM: xAI
     XAI_API_KEY: z.string().optional(),
 
+    // LLM: Aliyun
+    ALIYUN_API_KEY: z.string().optional(),
 
     // Helicone - works on both OpenAI and Anthropic vendors
     HELICONE_API_KEY: z.string().optional(),

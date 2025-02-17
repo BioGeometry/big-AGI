@@ -74,6 +74,7 @@ export function createChatGenerateDispatch(access: AixAPI_Access, model: AixAPI_
         chatGenerateParse: streaming ? createOpenAIChatCompletionsChunkParser() : createOpenAIChatCompletionsParserNS(),
       };
 
+    case 'aliyun':
     case 'azure':
     case 'azuredeepseek':
     case 'deepseek':
