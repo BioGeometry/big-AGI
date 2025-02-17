@@ -218,8 +218,10 @@ export class ChatGenerateTransmitter implements IParticleTransmitter {
       if (trimmed.startsWith('<think>')) {
         this.isThinkingText = true;
         remaining = trimmed.substring('<think>'.length);
-      } else
-        this.isThinkingText = false;  // or never use thinking extraction
+      } else {
+        if (trimmed.length > 0)  // the model might not have started thinking yet
+          this.isThinkingText = false;  // never use thinking extraction
+      }
     }
 
     while (remaining.length > 0) {
