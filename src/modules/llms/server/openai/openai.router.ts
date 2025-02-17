@@ -155,6 +155,7 @@ export const llmOpenAIRouter = createTRPCRouter({
             interfaces: [LLM_IF_OAI_Chat, LLM_IF_OAI_Reasoning],
             maxCompletionTokens: 32768,
             chatPrice: { input: 0.55, output: 2.19 },
+            benchmark: { cbaElo: 1361 },
           },
           {
             id: 'deepseek-v3',
@@ -164,6 +165,7 @@ export const llmOpenAIRouter = createTRPCRouter({
             interfaces: [LLM_IF_OAI_Chat, LLM_IF_OAI_Fn, LLM_IF_OAI_Json],
             maxCompletionTokens: 8192,
             chatPrice: { input: 0.27, output: 1.10 },
+            benchmark: { cbaElo: 1316 },
           },
           {
             id: 'qwen2.5-72b-instruct',
@@ -175,7 +177,7 @@ export const llmOpenAIRouter = createTRPCRouter({
             chatPrice: { input: 0.33, output: 1.32 },
           },
         ];
-        
+
         return { models };
       }
 
