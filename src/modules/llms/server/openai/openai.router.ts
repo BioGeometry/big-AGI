@@ -113,7 +113,7 @@ export const llmOpenAIRouter = createTRPCRouter({
 
         // only take 'gpt' models
         models = azureWireModels
-          .filter(m => m.model.includes('gpt') || m.model.includes('o1'))
+          .filter(m => m.model.includes('gpt') || m.model.includes('o1') || m.model.includes('o3'))
           .map((model): ModelDescriptionSchema => {
             const { id: deploymentRef, model: openAIModelId } = model;
             const { id: _deleted, label, ...rest } = azureModelToModelDescription(deploymentRef, openAIModelId, model.created_at, model.updated_at);
@@ -417,7 +417,7 @@ export function openAIAccess(access: OpenAIAccessSchema, modelRefId: string | nu
       if (apiPath.startsWith('/v1/')) {
         if (!modelRefId)
           throw new Error('Azure OpenAI API needs a deployment id');
-        azureUrl += `/openai/deployments/${modelRefId}/${apiPath.replace('/v1/', '')}?api-version=2023-07-01-preview`;
+        azureUrl += `/openai/deployments/${modelRefId}/${apiPath.replace('/v1/', '')}?api-version=2024-12-01-preview`;
       } else if (apiPath.startsWith('/openai/deployments'))
         azureUrl += apiPath;
       else
