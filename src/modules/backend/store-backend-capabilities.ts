@@ -8,6 +8,7 @@ import { useShallow } from 'zustand/react/shallow';
 
 export interface BackendCapabilities {
   // llms
+  hasLlmAlibaba: boolean;
   hasLlmAnthropic: boolean;
   hasLlmAzureOpenAI: boolean;
   hasLlmAzureDeepseek: boolean;
@@ -50,6 +51,7 @@ const useBackendCapabilitiesStore = create<BackendStore>()(
   (set) => ({
 
     // initial values
+    hasLlmAlibaba: false,
     hasLlmAnthropic: false,
     hasLlmAzureOpenAI: false,
     hasLlmAzureDeepseek: false,

@@ -22,7 +22,7 @@ export const ModelVendorAzureDeepseek: IModelVendor<DAzureDeepseekServiceSetting
   displayRank: 31,
   location: 'cloud',
   instanceLimit: 20,
-  hasBackendCapKey: 'hasLlmAzureDeepseek',
+  hasServerConfigKey: 'hasLlmAzureDeepseek',
 
   // components
   Icon: AzureIcon,

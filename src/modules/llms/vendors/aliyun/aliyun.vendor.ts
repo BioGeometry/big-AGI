@@ -24,7 +24,7 @@ export const ModelVendorAliyun: IModelVendor<DAliyunServiceSettings, OpenAIAcces
   displayRank: 36,
   location: 'cloud',
   instanceLimit: 5,
-  hasBackendCapKey: 'hasLlmAliyun',
+  hasServerConfigKey: 'hasLlmAliyun',
 
   // components
   Icon: AliyunIcon,

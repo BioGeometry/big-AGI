@@ -110,6 +110,20 @@ export const createAppTheme = (uiComplexityMinimal: boolean) => extendTheme({
       },
     },
 
+    /**
+     * Badge
+     * - add a 'color-feature' color, to be used with the FeatureBadge component
+     */
+    JoyBadge: {
+      styleOverrides: {
+        badge: ({ ownerState }) =>
+          // HACK: we set this to 'color-feature' to force the theming to our liking
+          (ownerState.color as any) !== 'color-feature' ? undefined : ({
+            backgroundColor: '#0288D1',
+          }),
+      },
+    },
+
     // JoyMenuItem: {
     //   styleOverrides: {
     //     root: {
@@ -164,6 +178,7 @@ export const themeZIndexDesktopDrawer = 26;
 export const themeZIndexDesktopPanel = 27;
 export const themeZIndexDesktopNav = 30;
 export const themeZIndexChatBubble = 50;
+export const themeZIndexDragOverlay = 60;
 export const themeZIndexOverMobileDrawer = 1301;
 
 
@@ -190,6 +205,8 @@ interface ContentScalingOptions {
   // ChatDrawer
   chatDrawerItemSx: { '--ListItem-minHeight': string, fontSize: string };
   chatDrawerItemFolderSx: { '--ListItem-minHeight': string, fontSize: string };
+  // OptimaPanelGroup
+  optimaPanelGroupSize: 'sm' | 'md';
 }
 
 export const themeScalingMap: Record<ContentScaling, ContentScalingOptions> = {
@@ -203,6 +220,7 @@ export const themeScalingMap: Record<ContentScaling, ContentScalingOptions> = {
     fragmentButtonFontSize: 'xs',
     chatDrawerItemSx: { '--ListItem-minHeight': '2.25rem', fontSize: 'sm' },          // 36px
     chatDrawerItemFolderSx: { '--ListItem-minHeight': '2.5rem', fontSize: 'sm' },     // 40px
+    optimaPanelGroupSize: 'sm',
   },
   sm: {
     blockCodeFontSize: '0.75rem',
@@ -214,6 +232,7 @@ export const themeScalingMap: Record<ContentScaling, ContentScalingOptions> = {
     fragmentButtonFontSize: 'sm',
     chatDrawerItemSx: { '--ListItem-minHeight': '2.25rem', fontSize: 'sm' },
     chatDrawerItemFolderSx: { '--ListItem-minHeight': '2.5rem', fontSize: 'sm' },
+    optimaPanelGroupSize: 'sm',
   },
   md: {
     blockCodeFontSize: '0.875rem',
@@ -225,6 +244,7 @@ export const themeScalingMap: Record<ContentScaling, ContentScalingOptions> = {
     fragmentButtonFontSize: 'sm',
     chatDrawerItemSx: { '--ListItem-minHeight': '2.5rem', fontSize: 'md' },           // 40px
     chatDrawerItemFolderSx: { '--ListItem-minHeight': '2.75rem', fontSize: 'md' },    // 44px
+    optimaPanelGroupSize: 'md',
   },
   // lg: {
   //   chatDrawerFoldersLineHeight: '3rem',

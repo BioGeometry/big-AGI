@@ -112,7 +112,7 @@ export function createDMessageTextContent(role: DMessageRole, text: string): DMe
 }
 
 export function createDMessagePlaceholderIncomplete(role: DMessageRole, placeholderText: string): DMessage {
-  const placeholderFragment = createPlaceholderVoidFragment(placeholderText);
+  const placeholderFragment = createPlaceholderVoidFragment(placeholderText, undefined);
   const message = createDMessageFromFragments(role, [placeholderFragment]);
   message.pendingIncomplete = true;
   return message;
@@ -198,6 +198,10 @@ export function duplicateDMessageGenerator(generator: Readonly<DMessageGenerator
 export function messageWasInterruptedAtStart(message: Pick<DMessage, 'generator' | 'fragments'>): boolean {
   return message.generator?.tokenStopReason === 'client-abort' && message.fragments.length === 0;
 }
+
+// export function messageOnlyContainsPlaceholder(message: Pick<DMessage, 'fragments'>): boolean {
+//   return message.fragments.length === 1 && isVoidFragment(message.fragments[0]) && isPlaceholderPart(message.fragments[0].part);
+// }
 
 
 // helpers - user flags
