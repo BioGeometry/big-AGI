@@ -18,12 +18,12 @@ import { isValidAzureApiKey, ModelVendorAzureDeepseek } from './azure-deepseek.v
 export function AzureDeepseekServiceSetup(props: { serviceId: DModelsServiceId }) {
 
   // external state
-  const { service, serviceAccess, serviceHasBackendCap, serviceHasLLMs, updateSettings } =
+  const { service, serviceAccess, serviceHasCloudTenantConfig, serviceHasLLMs, updateSettings } =
     useServiceSetup(props.serviceId, ModelVendorAzureDeepseek);
 
   // derived state
   const { oaiKey: azureKey, oaiHost: azureEndpoint } = serviceAccess;
-  const needsUserKey = !serviceHasBackendCap;
+  const needsUserKey = !serviceHasCloudTenantConfig;
 
   const keyValid = isValidAzureApiKey(azureKey);
   const keyError = (/*needsUserKey ||*/ !!azureKey) && !keyValid;

@@ -25,7 +25,6 @@ export interface BackendCapabilities {
   hasLlmPerplexity: boolean;
   hasLlmTogetherAI: boolean;
   hasLlmXAI: boolean;
-  hasLlmAliyun: boolean;
   // others
   hasDB: boolean;
   hasBrowsing: boolean;
@@ -68,7 +67,6 @@ const useBackendCapabilitiesStore = create<BackendStore>()(
     hasLlmPerplexity: false,
     hasLlmTogetherAI: false,
     hasLlmXAI: false,
-    hasLlmAliyun: false,
     hasDB: false,
     hasBrowsing: false,
     hasGoogleCustomSearch: false,

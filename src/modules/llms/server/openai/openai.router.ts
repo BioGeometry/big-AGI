@@ -32,7 +32,7 @@ import { LLM_IF_OAI_Chat, LLM_IF_OAI_Reasoning, LLM_IF_HOTFIX_NoTemperature, LLM
 
 
 const openAIDialects = z.enum([
-  'alibaba', 'azure', 'azuredeepseek', 'aliyun', 'deepseek', 'groq', 'lmstudio', 'localai', 'mistral', 'openai', 'openpipe', 'openrouter', 'perplexity', 'togetherai', 'xai',
+  'alibaba', 'azure', 'azuredeepseek', 'deepseek', 'groq', 'lmstudio', 'localai', 'mistral', 'openai', 'openpipe', 'openrouter', 'perplexity', 'togetherai', 'xai',
 ]);
 export type OpenAIDialects = z.infer<typeof openAIDialects>;
 
@@ -118,44 +118,6 @@ export const llmOpenAIRouter = createTRPCRouter({
           maxCompletionTokens: 8192,
           chatPrice: { input: 0.55, output: 2.19, cache: { cType: 'oai-ac', read: 0.14 } },
         },];
-
-        return { models };
-      }
-
-      // [Aliyun]: fixed model list
-      if (access.dialect === 'aliyun') {
-        models = [
-          // Qwen and Deepseek models from Aliyun
-          {
-            id: 'deepseek-r1',
-            label: 'DeepSeek Reasoner R1',
-            description: 'Reasoning model with Chain-of-Thought capabilities, 64K context length. No discount.',
-            contextWindow: 65536,
-            interfaces: [LLM_IF_OAI_Chat, LLM_IF_OAI_Reasoning],
-            maxCompletionTokens: 32768,
-            chatPrice: { input: 0.55, output: 2.19 },
-            benchmark: { cbaElo: 1361 },
-          },
-          {
-            id: 'deepseek-v3',
-            label: 'DeepSeek Chat V3',
-            description: 'General-purpose model with 64K context length.',
-            contextWindow: 65536,
-            interfaces: [LLM_IF_OAI_Chat, LLM_IF_OAI_Fn, LLM_IF_OAI_Json],
-            maxCompletionTokens: 8192,
-            chatPrice: { input: 0.27, output: 1.10 },
-            benchmark: { cbaElo: 1316 },
-          },
-          {
-            id: 'qwen2.5-72b-instruct',
-            label: 'Qwen2.5-Max 72B Instruct',
-            description: 'Best performing model in the Qwen series, with improved code writing and understanding, logical reasoning, and multi-language capabilities. The model has been adjusted to align with human preferences, resulting in more detailed and structured responses. It excels in content creation, JSON formatting, and role-playing.',
-            contextWindow: 32768,
-            interfaces: [LLM_IF_OAI_Chat, LLM_IF_OAI_Fn, LLM_IF_OAI_Json],
-            maxCompletionTokens: 8192,
-            chatPrice: { input: 0.33, output: 1.32 },
-          },
-        ];
 
         return { models };
       }
@@ -390,7 +352,6 @@ const DEFAULT_GROQ_HOST = 'https://api.groq.com/openai';
 const DEFAULT_LOCALAI_HOST = 'http://127.0.0.1:8080';
 const DEFAULT_MISTRAL_HOST = 'https://api.mistral.ai';
 const DEFAULT_OPENAI_HOST = 'api.openai.com';
-const DEFAULT_ALIYUN_HOST = 'https://dashscope.aliyuncs.com/compatible-mode';
 const DEFAULT_OPENPIPE_HOST = 'https://app.openpipe.ai/api';
 const DEFAULT_OPENROUTER_HOST = 'https://openrouter.ai/api';
 const DEFAULT_PERPLEXITY_HOST = 'https://api.perplexity.ai';
@@ -535,21 +496,6 @@ export function openAIAccess(access: OpenAIAccessSchema, modelRefId: string | nu
         },
         url: oaiHost + apiPath,
       };
-
-      case 'aliyun':
-        const aliKey = access.oaiKey || env.ALIYUN_API_KEY || '';
-        let aliHost = fixupHost(access.oaiHost || DEFAULT_ALIYUN_HOST, apiPath);
-        // warn if no key - only for default (non-overridden) hosts
-        if (!aliKey && aliHost.indexOf(DEFAULT_ALIYUN_HOST) !== -1)
-          throw new Error('Missing Aliyun API Key. Add it on the UI (Models Setup) or server side (your deployment).');
-
-        return {
-          headers: {
-            'Content-Type': 'application/json',
-            ...(aliKey && { Authorization: `Bearer ${aliKey}` }),
-          },
-          url: aliHost + apiPath,
-        };
 
     case 'groq':
       let groqKey = access.oaiKey || env.GROQ_API_KEY || '';
