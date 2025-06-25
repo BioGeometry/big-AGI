@@ -35,7 +35,7 @@ export function aixToOpenAIChatCompletions(openAIDialect: OpenAIDialects, model:
   const hotFixAlternateUserAssistantRoles = openAIDialect === 'deepseek' || openAIDialect === 'azuredeepseek' || openAIDialect === 'perplexity';
   const hotFixRemoveEmptyMessages = openAIDialect === 'perplexity';
   const hotFixRemoveStreamOptions = openAIDialect === 'azure' || openAIDialect === 'azuredeepseek' || openAIDialect === 'mistral';
-  const hotFixSquashMultiPartText = openAIDialect === 'deepseek' || openAIDialect === 'azuredeepseek';
+  const hotFixSquashMultiPartText = model.id.startsWith('deepseek-');
   const hotFixThrowCannotFC = openAIDialect === 'openrouter' /* OpenRouter FC support is not good (as of 2024-07-15) */ || openAIDialect === 'perplexity';
   const hotFixVndORIncludeReasoning = openAIDialect === 'openrouter'; // [OpenRouter, 2025-01-24] has a special `include_reasoning` field to show the chain of thought
 
