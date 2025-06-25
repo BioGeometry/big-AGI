@@ -2,6 +2,16 @@ import type { FileWithHandle } from 'browser-fs-access';
 
 
 /**
+ * Check if FileSystemFileHandle is available in the current context.
+ * This requires a secure context (HTTPS) or localhost for development.
+ */
+export function isFileSystemHandleSupported(): boolean {
+  return 'FileSystemFileHandle' in window &&
+         typeof FileSystemFileHandle === 'function' &&
+         (window.isSecureContext || window.location.protocol === 'https:' || window.location.hostname === 'localhost');
+}
+
+/**
  * Extending the `FileSystemDirectoryHandle` with a `values` method to iterate over the directory contents.
  * This is as defined in https://fs.spec.whatwg.org/#filesystemdirectoryhandle (File System Standard, Last Updated 28 June 2024).
  */
@@ -69,8 +79,8 @@ export function getDataTransferFilesOrPromises(items: DataTransferItemList, fall
     if (item.kind !== 'file')
       continue;
 
-    // Try to get file system handle if available and not forced to use file
-    if ('getAsFileSystemHandle' in item && typeof item.getAsFileSystemHandle === 'function') {
+    // Try to get file system handle if available and in a secure context
+    if ('getAsFileSystemHandle' in item && typeof item.getAsFileSystemHandle === 'function' && isFileSystemHandleSupported()) {
       try {
         const fsHandle = item.getAsFileSystemHandle() as Promise<FileSystemFileHandle | FileSystemDirectoryHandle | null>;
         if (fsHandle)
@@ -82,7 +92,8 @@ export function getDataTransferFilesOrPromises(items: DataTransferItemList, fall
           }));
         continue;
       } catch (error) {
-        console.error('Error getting file system handle:', error);
+        console.warn('FileSystemFileHandle not available in this context, falling back to File API:', error);
+        // Fall through to regular file handling
       }
     }
 
