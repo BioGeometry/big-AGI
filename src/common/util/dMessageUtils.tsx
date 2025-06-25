@@ -4,7 +4,6 @@ import TimeAgo from 'react-timeago';
 import type { SxProps } from '@mui/joy/styles/types';
 import { Avatar, Box } from '@mui/joy';
 import Face6Icon from '@mui/icons-material/Face6';
-import FormatPaintOutlinedIcon from '@mui/icons-material/FormatPaintOutlined';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActiveOutlined';
 import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest';
 import SmartToyOutlinedIcon from '@mui/icons-material/SmartToyOutlined';
@@ -17,6 +16,7 @@ import { findModelVendor } from '~/modules/llms/vendors/vendors.registry';
 import type { MetricsChatGenerateCost_Md } from '~/common/stores/metrics/metrics.chatgenerate';
 import type { DMessage, DMessageGenerator, DMessageRole } from '~/common/stores/chat/chat.message';
 import type { UIComplexityMode } from '~/common/app.theme';
+import { PhPaintBrush } from '~/common/components/icons/phosphor/PhPaintBrush';
 import { animationColorRainbow } from '~/common/util/animUtils';
 import { formatModelsCost } from '~/common/util/costUtils';
 
@@ -79,10 +79,12 @@ const tooltipMetricsGridSx: SxProps = {
 
 
 /** Whole message background color, based on the message role and state */
-export function messageBackground(messageRole: DMessageRole | string, wasEdited: boolean, isAssistantIssue: boolean): string {
+export function messageBackground(messageRole: DMessageRole | string, userCommand: 'draw' | 'react' | false, wasEdited: boolean, isAssistantIssue: boolean): string {
   switch (messageRole) {
     case 'user':
-      return 'primary.plainHoverBg'; // was .background.level1
+      return userCommand === 'draw' ? 'warning.softActiveBg'
+        : userCommand === 'react' ? 'success.softHoverBg'
+          : 'primary.plainHoverBg'; // was .background.level1
     case 'assistant':
       return isAssistantIssue ? 'danger.softBg' : 'background.surface';
     case 'system':
@@ -127,7 +129,10 @@ export function makeMessageAvatarIcon(
 
     case 'assistant':
       const isDownload = messageGeneratorName === 'web';
-      const isTextToImage = messageGeneratorName === 'DALL·E' || messageGeneratorName === 'Prodia';
+      const isTextToImage =
+        messageGeneratorName?.startsWith('GPT Image') // sync this with t2i.client.ts
+        || messageGeneratorName?.startsWith('DALL·E')
+        || messageGeneratorName === 'Prodia';
       const isReact = messageGeneratorName?.startsWith('react-');
 
       // Extra appearance
@@ -159,7 +164,7 @@ export function makeMessageAvatarIcon(
 
       // mode: text-to-image
       if (isTextToImage)
-        return <FormatPaintOutlinedIcon sx={!messageIncomplete ? avatarIconSx : {
+        return <PhPaintBrush sx={!messageIncomplete ? avatarIconSx : {
           ...avatarIconSx,
           animation: `${animationColorRainbow} 1s linear infinite`,
         }} />;
@@ -469,14 +474,27 @@ export function prettyShortChatModelName(model: string | undefined): string {
 }
 
 function _prettyAnthropicModelName(modelId: string): string | null {
-  const claudeIndex = modelId.indexOf('claude-3');
-  if (claudeIndex === -1) return null;
+  if (modelId.indexOf('claude-') === -1) return null; // not a Claude model
+
+  // must match any known prefix
+  let claudeIndex = -1;
+  const claudePrefixes = ['claude-opus-4', 'claude-sonnet-4', 'claude-haiku-4', 'claude-3', 'claude-2'];
+  for (const prefix of claudePrefixes) {
+    const index = modelId.indexOf(prefix);
+    if (index !== -1) {
+      claudeIndex = index;
+      break;
+    }
+  }
 
   const subStr = modelId.slice(claudeIndex);
   const version =
-    subStr.includes('-3-7-') ? '3.7'
-      : subStr.includes('-3-5-') ? '3.5'
-        : '3';
+    subStr.includes('-5') ? '5'
+      : subStr.includes('-4') ? '4'
+        : subStr.includes('-3-7') ? '3.7'
+          : subStr.includes('-3-5') ? '3.5'
+            : subStr.includes('-3') ? '3'
+              : '?';
 
   if (subStr.includes(`-opus`)) return `Claude ${version} Opus`;
   if (subStr.includes(`-sonnet`)) return `Claude ${version} Sonnet`;
