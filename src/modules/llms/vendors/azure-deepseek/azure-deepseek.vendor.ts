@@ -24,10 +24,6 @@ export const ModelVendorAzureDeepseek: IModelVendor<DAzureDeepseekServiceSetting
   instanceLimit: 20,
   hasServerConfigKey: 'hasLlmAzureDeepseek',
 
-  // components
-  Icon: AzureIcon,
-  ServiceSetupComponent: AzureDeepseekServiceSetup,
-
   // functions
   getTransportAccess: (partialSetup): OpenAIAccessSchema => ({
     dialect: 'azuredeepseek',

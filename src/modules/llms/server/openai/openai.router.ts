@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/v4';
 import { TRPCError } from '@trpc/server';
 
 import { createTRPCRouter, publicProcedure } from '~/server/trpc/trpc.server';
@@ -22,13 +22,13 @@ import { fastAPIHeuristic, fastAPIModels } from './models/fastapi.models';
 import { fireworksAIHeuristic, fireworksAIModelsToModelDescriptions } from './models/fireworksai.models';
 import { groqModelFilter, groqModelSortFn, groqModelToModelDescription } from './models/groq.models';
 import { lmStudioModelToModelDescription, localAIModelSortFn, localAIModelToModelDescription } from './models/models.data';
-import { mistralModelsSort, mistralModelToModelDescription } from './models/mistral.models';
+import { mistralModels } from './models/mistral.models';
 import { openAIModelFilter, openAIModelToModelDescription, openAISortModels } from './models/openai.models';
 import { openPipeModelDescriptions, openPipeModelSort, openPipeModelToModelDescriptions } from './models/openpipe.models';
 import { openRouterInjectVariants, openRouterModelFamilySortFn, openRouterModelToModelDescription } from './models/openrouter.models';
 import { perplexityAIModelDescriptions, perplexityInjectVariants } from './models/perplexity.models';
 import { togetherAIModelsToModelDescriptions } from './models/together.models';
-import { wilreLocalAIModelsApplyOutputSchema, wireLocalAIModelsAvailableOutputSchema, wireLocalAIModelsListOutputSchema } from './localai.wiretypes';
+import { wireLocalAIModelsApplyOutputSchema, wireLocalAIModelsAvailableOutputSchema, wireLocalAIModelsListOutputSchema } from './localai.wiretypes';
 import { xaiModelDescriptions, xaiModelSort } from './models/xai.models';
 import { LLM_IF_OAI_Chat, LLM_IF_OAI_Reasoning, LLM_IF_HOTFIX_NoTemperature, LLM_IF_OAI_Fn, LLM_IF_OAI_Json } from '~/common/stores/llms/llms.types';
 
@@ -253,9 +253,7 @@ export const llmOpenAIRouter = createTRPCRouter({
           break;
 
         case 'mistral':
-          models = openAIModels
-            .map(mistralModelToModelDescription)
-            .sort(mistralModelsSort);
+          models = mistralModels(openAIModels);
           break;
 
         // [OpenAI]: chat-only models, custom sort, manual mapping
@@ -474,7 +472,7 @@ export const llmOpenAIRouter = createTRPCRouter({
     .mutation(async ({ input: { access, galleryName, modelName } }) => {
       const galleryModelId = `${galleryName}@${modelName}`;
       const wireLocalAIModelApply = await openaiPOSTOrThrow(access, null, { id: galleryModelId }, '/models/apply');
-      return wilreLocalAIModelsApplyOutputSchema.parse(wireLocalAIModelApply);
+      return wireLocalAIModelsApplyOutputSchema.parse(wireLocalAIModelApply);
     }),
 
   /* [LocalAI] Poll for a Model download Job status */
@@ -554,10 +552,12 @@ export function openAIAccess(access: OpenAIAccessSchema, modelRefId: string | nu
         throw new Error('Missing Azure API Key or Host. Add it on the UI (Models Setup) or server side (your deployment).');
 
       let azureUrl = azureHost;
-      if (apiPath.startsWith('/v1/')) {
+      if (apiPath.startsWith('/v1/responses')) {
+        azureUrl += `/openai/v1/responses?api-version=preview`;
+      } else if (apiPath.startsWith('/v1/')) {
         if (!modelRefId)
           throw new Error('Azure OpenAI API needs a deployment id');
-        azureUrl += `/openai/deployments/${modelRefId}/${apiPath.replace('/v1/', '')}?api-version=2025-02-01-preview`;
+        azureUrl += `/openai/deployments/${modelRefId}/${apiPath.replace('/v1/', '')}?api-version=2025-04-01-preview`;
       } else if (apiPath.startsWith('/openai/deployments'))
         azureUrl += apiPath;
       else

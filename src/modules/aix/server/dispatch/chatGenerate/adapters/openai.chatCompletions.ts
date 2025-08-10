@@ -107,7 +107,9 @@ export function aixToOpenAIChatCompletions(openAIDialect: OpenAIDialects, model:
     _fixVndOaiRestoreMarkdown_Inline(payload);
   }
   // [OpenAI] Vendor-specific web search context and/or geolocation
-  if (model.vndOaiWebSearchContext || model.userGeolocation) {
+  // NOTE: OpenAI doesn't support web search with minimal reasoning effort
+  const skipWebSearchDueToMinimalReasoning = model.vndOaiReasoningEffort === 'minimal';
+  if ((model.vndOaiWebSearchContext || model.userGeolocation) && !skipWebSearchDueToMinimalReasoning) {
     payload.web_search_options = {};
     if (model.vndOaiWebSearchContext)
       payload.web_search_options.search_context_size = model.vndOaiWebSearchContext;
@@ -118,6 +120,37 @@ export function aixToOpenAIChatCompletions(openAIDialect: OpenAIDialects, model:
           ...model.userGeolocation,
         },
       };
+  }
+
+  // [xAI] Vendor-specific extensions for Live Search
+  if (openAIDialect === 'xai' && model.vndXaiSearchMode && model.vndXaiSearchMode !== 'off') {
+    const search_parameters: any = {
+      return_citations: true,
+    };
+
+    // mode defaults to 'auto' if not specified, so only include if not 'auto'
+    if (model.vndXaiSearchMode && model.vndXaiSearchMode !== 'auto')
+      search_parameters.mode = model.vndXaiSearchMode;
+
+    if (model.vndXaiSearchSources) {
+      const sources = model.vndXaiSearchSources
+        .split(',')
+        .map(s => s.trim())
+        .filter(s => !!s);
+      
+      // only omit sources if it's the default ('web' and 'x')
+      const isDefaultSources = sources.length === 2 && sources.includes('web') && sources.includes('x');
+      if (!isDefaultSources)
+        search_parameters.sources = sources.map(s => ({ type: s }));
+    }
+
+    if (model.vndXaiSearchDateFilter && model.vndXaiSearchDateFilter !== 'unfiltered') {
+      const fromDate = _convertSimpleDateFilterToISO(model.vndXaiSearchDateFilter);
+      if (fromDate)
+        search_parameters.from_date = fromDate;
+    }
+
+    payload.search_parameters = search_parameters;
   }
 
   // [Perplexity] Vendor-specific extensions for search models
@@ -165,7 +198,7 @@ export function aixToOpenAIChatCompletions(openAIDialect: OpenAIDialects, model:
   const validated = OpenAIWire_API_Chat_Completions.Request_schema.safeParse(payload);
   if (!validated.success) {
     console.warn('OpenAI: invalid chatCompletions payload. Error:', validated.error);
-    throw new Error(`Invalid sequence for OpenAI models: ${validated.error.errors?.[0]?.message || validated.error.message || validated.error}.`);
+    throw new Error(`Invalid sequence for OpenAI models: ${validated.error.issues?.[0]?.message || validated.error.message || validated.error}.`);
   }
 
   // if (hotFixUseDeprecatedFunctionCalls)
@@ -517,7 +550,8 @@ function _toOpenAIMessages(systemMessage: AixMessages_SystemMessage | null, chat
 
 function _toOpenAITools(itds: AixTools_ToolDefinition[]): NonNullable<TRequest['tools']> {
   return itds.map(itd => {
-    switch (itd.type) {
+    const itdType = itd.type;
+    switch (itdType) {
 
       case 'function_call':
         const { name, description, input_schema } = itd.function_call;
@@ -536,6 +570,10 @@ function _toOpenAITools(itds: AixTools_ToolDefinition[]): NonNullable<TRequest['
 
       case 'code_execution':
         throw new Error('Gemini code interpreter is not supported');
+
+      default:
+        // const _exhaustiveCheck: never = itdType;
+        throw new Error(`OpenAI (classic API) unsupported tool: ${itdType}`);
 
     }
   });
@@ -634,4 +672,26 @@ function _convertPerplexityDateFilter(filter: string): string {
       console.warn('[DEV] Perplexity date filter not recognized:', filter);
       return '';
   }
+}
+
+function _convertSimpleDateFilterToISO(filter: '1d' | '1w' | '1m' | '6m' | '1y'): string {
+  const now = new Date();
+  switch (filter) {
+    case '1d':
+      now.setDate(now.getDate() - 1);
+      break;
+    case '1w':
+      now.setDate(now.getDate() - 7);
+      break;
+    case '1m':
+      now.setMonth(now.getMonth() - 1);
+      break;
+    case '6m':
+      now.setMonth(now.getMonth() - 6);
+      break;
+    case '1y':
+      now.setFullYear(now.getFullYear() - 1);
+      break;
+  }
+  return now.toISOString().split('T')[0];
 }
